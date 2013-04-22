@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Test of SVG-in-HTML embedding, with scripting!</title>
+		<script type="text/javascript">
+			var interval = 50, active=true;
+			var arena, arena_rect;
+			var omega = 0.01;
+			var score_div, score = 0;
+			var svg_ns = "http://www.w3.org/2000/svg";
+			function init() {
+				score_div = document.getElementById("score");
+				score_div.innerHTML = "Score: " + score
+				arena = document.getElementById("arena");
+				arena_rect = arena.getBoundingClientRect();
+				for(i=0; i<5; i++) {
+					var shape = make_target(Math.random()*arena_rect.width, Math.random()*arena_rect.height, 10);
+					shape.onclick = function(evt) {
+						console.log("Got a point!");
+						evt.target.remove();
+						score += 1;
+						score_div.innerHTML = "Score: " + score
+					};
+				}
+				draw_tick();
+			}
+			function draw_tick() {
+				var targets = arena.querySelectorAll(".target");
+				if (targets.length == 0) {
+					active = false;
+				}
+				console.log("tick!");
+				var x, y, tx, ty;
+				for(var i=0; i<targets.length; i++) {
+					x = targets[i].getAttribute("cx") - arena_rect.width/2.0;
+					y = targets[i].getAttribute("cy") - arena_rect.height/2.0;
+					tx = Math.cos(omega)*x - Math.sin(omega)*y + arena_rect.width/2.0;
+					ty = Math.sin(omega)*x + Math.cos(omega)*y + arena_rect.height/2.0;
+					targets[i].setAttribute("cx", tx); 
+					targets[i].setAttribute("cy", ty);
+				}
+				if(active) {
+					setTimeout(draw_tick, interval);
+				}
+			}
+			function make_target(x, y, r) {
+				var shape = document.createElementNS(svg_ns, "circle");
+				shape.setAttribute("cx", x);
+				shape.setAttribute("cy", y);
+				shape.setAttribute("r", r);
+				shape.setAttribute("class", "target");
+				arena.appendChild(shape);
+				return shape;
+			}
+		</script>
+		<style type="text/css">
+			polygon { 
+				fill: lime; 
+				stroke: purple; 
+				stroke-width: 5; 
+				fill-rule: evenodd;
+			}
+			rect {
+				fill: green;
+			}
+			svg {
+				border: 1px solid black;
+			}
+			.target {
+				fill: red;
+				stroke: black;
+				stroke-width: 7;
+			}
+		</style>
+	</head>
+	<body onload="init()">
+		<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="300" width="400" id="arena"></svg>
+		<div id="score"></div>
+	</body>
+</html>
