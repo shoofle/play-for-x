@@ -1,0 +1,14 @@
+<script src="http://code.jquery.com/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+	var game_ws = new WebSocket("ws://li60-203.members.linode.com/game_data");
+	$("#game").submit(function (){
+		game_ws.send("a_game.html: " + $("[name=value]").val());
+		return false;
+	});
+});
+</script>
+<form id="game">
+IT'S LIKE I CAN TOUCH YOU<br/>
+<input type="text" name="value"></input>
+</form>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<title>Shoofle's Test Thing</title>
+<meta charset="utf-8" />
+<style>
+iframe {border: 1px solid black}
+</style>
+<script src="http://code.jquery.com/jquery.min.js"></script>
+<script>
+$(document).ready(function (){
+	var ws = new WebSocket("ws://li60-203.members.linode.com/socket");
+	var indicator = $("#indicator");
+	ws.onopen = function (evt) {
+		indicator.css("background", "#00bb00");
+		indicator.html("Connection is open!");
+	};
+	ws.onmessage = function (evt) {
+		$('#play-area').attr('src', evt.data)
+	};
+	ws.onclose = function(evt) {
+		indicator.css("background", "#bb0000");
+		indicator.html("Connection is closed.");
+	};
+	
+	$("#inputs").submit(function () {
+		ws.send($("[name=message-text]").val());
+		return false;
+	});
+});
+</script>
+</head>
+<body>
+<div id="indicator">Connection hasn't started.</div>
+<form id="inputs">
+  <input type="text" name="message-text"></input>
+  <input type="submit">Send message!</input>
+</form>
+<iframe id="play-area"></iframe>
