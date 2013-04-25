@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>A Simple Game That Sends Input Straight To The Server</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script>
+			$(document).ready(function() {
+				var room = "{{ room }}";
+				if (room != "") {
+					room = "/r/" + room;
+				}
+				var user = "{{ user }}";
+				if (user != "") {
+					user = "/n/" + user;
+				}
+				var wsurl = "ws://li60-203.members.linode.com" + room + user + "/results";
+				var game_ws = new WebSocket(wsurl);
+				$("#game").submit(function (){
+					game_ws.send(JSON.stringify({
+						"type" : "result",
+						"player" : "{{ user }}",
+						"room" : "{{ room }}",
+						"game" : "a game",
+						"score" : $("[name=value]").val()
+					}));
+					return false;
+				});
+			});
+		</script>
+		<style type="text/css">
+		</style>
+	</head>
+	<body>
+		<form id="game">
+			IT'S LIKE I CAN TOUCH YOU<br/>
+			<input type="text" name="value"></input>
+		</form>
+	</body>
+</html>

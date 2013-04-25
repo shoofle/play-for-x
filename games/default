@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Just a Default Block</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function() {
+				//var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?$/, "/socket");
+				var room = "{{ room }}";
+				if (room != "") {
+					room = "/r/" + room;
+				}
+				var user = "{{ user }}";
+				if (user != "") {
+					user = "/n/" + user;
+				}
+				var wsurl = "ws://li60-203.members.linode.com" + room + user + "/results";
+				var game_ws = new WebSocket(wsurl);
+				$("div").click(function() {
+					game_ws.send(JSON.stringify({
+						"type" : "result",
+						"player" : "{{ user }}",
+						"room" : "{{ room }}",
+						"game" : "default",
+						"score" : "default block loaded"
+					}));
+					game_ws.close();
+				});
+			});
+		</script>
+		<style type="text/css">
+			div {
+				border: 1px dashed black;
+				background: #bbccbb;
+			}
+		</style>
+	</head>
+	<body>
+		<div>You are playing in {{ room }}</div>
+	</body>
+</html>
