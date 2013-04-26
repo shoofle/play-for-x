@@ -7,6 +7,8 @@ from os.path import join, isfile
 import re
 import json
 
+#TODO: Would like to change from using the word "socket" on urls to using something else that doesn't imply the technology used. Not sure what to use, though. Not a big concern.
+
 path = "/home/shoofle/play-for-x"
 loader = tornado.template.Loader(path)
 games_subdir = "games"
@@ -16,6 +18,15 @@ files = [f for f in listdir(path_games) if isfile(join(path_games, f))]
 rooms = dict()
 
 class MainHandler(tornado.web.RequestHandler):
+	def get(self, game=None):
+		if game is None:
+			self.render("chat.html", games=files)
+		else:
+			game = game.split("/")[1]
+			if game not in files: game = "default"
+			self.render(join(path_games, game))
+
+class MainHandlerOld(tornado.web.RequestHandler):
 	def get(self, r=None, room=None, n=None, user=None, g=None, game=None):#games=None, room=None, rest=None):
 		if r is None: room = ""
 		if room not in rooms: rooms[room] = {"": []}
@@ -28,18 +39,18 @@ class MainHandler(tornado.web.RequestHandler):
 			self.render(join(path_games, game), room=room, user=user)
 
 class SocketHandler(tornado.websocket.WebSocketHandler):
-	def open(self, r=None, room=None, n=None, user=None):
-		if r is None: room = ""
-		if room not in rooms: rooms[room] = {"": []}
-		if n is None: user = ""
-		if user not in rooms[room]: rooms[room][user] = []
-		self.room_name = room
-		self.user_name = user
+	def open(self):
+		self.room_name = ""
+		self.user_name = ""
+		if self.room_name not in rooms: rooms[self.room_name] = {"": []}
+		if self.user_name not in rooms[self.room_name]: rooms[self.room_name][self.user_name] = []
 		rooms[self.room_name][self.user_name].append(self)
 
-		starting_message = {"type" : "chat", "player" : self.user_name, "content" : "Connected to server!"}
-		self.write_message(json.dumps(starting_message))
-		print("Got a new connection!")
+		starting_message = {"type": "system message", 
+							"content" : "a new player joined the lobby!"}
+		for name in rooms[self.room_name]:
+			for sock in rooms[self.room_name][name]:
+				sock.write_message(json.dumps(starting_message))
 
 	def on_message(self, message):
 		print(self.room_name, str(self), " received message ", message)
@@ -53,6 +64,16 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
 			self.write_message(json.dumps(response))
 			return
 
+		if m_type == "chat":
+			print(self.room_name + ": " + self.user_name + " said: " + m["content"])
+			print(m)
+			out = { "type": "chat",
+					"player": self.user_name,
+					"content": m["content"]}
+			for name in rooms[self.room_name]:
+				for sock in rooms[self.room_name][name]:
+					sock.write_message(out) # Bounce it straight back to everyone in the room.
+
 		if m_type == "room change":
 			oldroom = self.room_name
 			newroom = m["room name"]
@@ -62,16 +83,32 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
 				del rooms[oldroom][self.user_name]
 			if len(rooms[oldroom]) == 0:
 				del rooms[oldroom]
+			else:
+				response = {"type": "system message",
+							"content": self.user_name + " has left " + oldroom + "."}
+				for name in rooms[oldroom]:
+					for sock in rooms[oldroom][name]:
+						sock.write_message(json.dumps(response))
+			
 			if newroom not in rooms:
 				rooms[newroom] = {"": []}
 			if self.user_name not in rooms[newroom]:
 				rooms[newroom][self.user_name] = []
 			rooms[newroom][self.user_name].append(self)
+			response = {"type": "system message",
+						"content": self.user_name + " has joined " + newroom + "."}
+			for name in rooms[newroom]:
+				for sock in rooms[newroom][self.user_name]:
+					sock.write_message(json.dumps(response))
 
 			self.room_name = newroom
+		
+		
 		if m_type == "name change":
 			oldname = self.user_name
 			newname = m["user name"]
+			self.user_name = newname
+			print("changed name!")
 			
 			rooms[self.room_name][oldname].remove(self)
 			if len(rooms[self.room_name][oldname]) == 0:
@@ -80,18 +117,17 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
 				rooms[self.room_name][newname] = []
 			rooms[self.room_name][newname].append(self)
 			
-			self.user_name = newname
-			response = {"type": "chat",
-						"player": "system",
+			response = {"type": "system message",
 						"content": oldname + "is now known as " + newname}
 			self.write_message(json.dumps(response))
+			
 
-		if m_type == "game request": 
-			response = {"type": "game", 
-						"url": join(games_subdir, m["game name"]),
-						"user": self.user_name,
-						"room": self.room_name}
-			self.write_message(json.dumps(response))
+		#if m_type == "game request": 
+		#	response = {"type": "game", 
+		#				"url": join(games_subdir, m["game name"]),
+		#				"user": self.user_name,
+		#				"room": self.room_name}
+		#	self.write_message(json.dumps(response))
 
 class GameSocketHandler(tornado.websocket.WebSocketHandler):
 	def open(self, r=None, room=None, n=None, user=None):
@@ -125,9 +161,11 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 #		print("GSH: Closed connection.")
 
 application = tornado.web.Application([
-	(r"(/r/([^/]+))?(/n/([^/]+))?/socket", SocketHandler),
+	(r"/(games/[^/]+)?", MainHandler),
+	(r"/socket", SocketHandler),
+#	(r"(/r/([^/]+))?(/n/([^/]+))?/socket", SocketHandler),
 	(r"(/r/([^/]+))?(/n/([^/]+))?/results", GameSocketHandler),
-	(r"(/r/([^/]+))?(/n/([^/]+))?(/games/([^/]+))?/?", MainHandler),
+#	(r"(/r/([^/]+))?(/n/([^/]+))?(/games/([^/]+))?/?", MainHandler),
 ])
 
 if __name__ == "__main__":

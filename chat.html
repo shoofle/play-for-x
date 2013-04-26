@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Shoofle's Test Thing</title>
+		<meta charset="utf-8" />
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script>
+			var last_evt;
+			$(document).ready(function () {
+				var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?$/, "/socket");
+				var ws = new WebSocket(wsurl);
+				var indicator = $("#indicator");
+				var play_area = $("#play-area");
+				ws.onopen = function (evt) {
+					indicator.removeClass('closed');
+					indicator.addClass('open');
+					indicator.html("Connection is open!");
+				};
+				ws.onmessage = function (evt) {
+					var data;
+					try {
+						data = JSON.parse(evt.data);
+					}
+					catch (error) {
+						console.log(error);
+						data = {type: "error", content: error};
+					}
+					last_evt = evt;
+					console.log(evt.data);
+
+					if (data.type == "game") {
+						var url = data.url;
+						var room = data.room;
+						var user = data.user;
+						//if (room != null) {
+						//	url = "r/" + room + "/" + url;
+						//}
+						//if (user != null) {
+						//	url = "n/" + user + "/" + url;
+						//}
+						play_area.attr('src', url);
+					}
+					else if (data.type == "chat") {
+						var log_entry = $('<li></li>');
+						log_entry.append($('<span></span>').html(data.player).addClass('from').addClass('player'));
+						log_entry.append($('<span></span>').html(data.content).addClass('message'));
+						// Want to somehow identify messages from players. Drag-and-drop would be really cool for sending games.
+						$('#log').append(log_entry);
+					}
+					else if (data.type == "system message") {
+						var log_entry = $('<li></li>');
+						log_entry.append($('<span></span>').html("system").addClass('from').addClass('system'));
+						log_entry.append($('<span></span>').html(data.content).addClass('message').addClass('system'));
+						$('#log').append(log_entry);
+					}
+					else if (data.type == "result") {
+						var log_entry = $('<li></li>');
+						log_entry.addClass('result');
+						log_entry.attr('player', data.player);
+						log_entry.attr('game', data.game);
+						log_entry.html(data.player + ' tried ' + data.game + ' and got: ' + data.score);
+						$('#log').append(log_entry);
+					}
+					else if (data.type == "error") {
+						var log_entry = $('<li></li>');
+						log_entry.addClass('error');
+						log_entry.html(data.content)
+						$('#log').append(log_entry);
+					} 
+					else {
+						var log_entry = $('<li></li>');
+						log_entry.addClass('noclue');
+						log_entry.html(evt.data);
+						$('#log').append(log_entry);
+					}
+				};
+				ws.onclose = function(evt) {
+					indicator.removeClass('open');
+					indicator.addClass('closed');
+					indicator.html("Connection is closed.");
+				};
+				
+				$("form#name").submit(function () {
+					ws.send(JSON.stringify({
+						"type" : "name change",
+						"user name" : $('form#name [name=name]').val()
+					}));
+					return false;
+				});
+				$('form#room').submit(function () {
+					ws.send(JSON.stringify({
+						"type" : "room change",
+						"room name" : $('form#room [name=room]').val()
+					}));
+					return false;
+				});
+				$('form#chat').submit(function () {
+					ws.send(JSON.stringify({
+						"type" : "chat",
+						"content" : $('form#chat [name=message]').val()
+					}));
+					$('form#chat [name=message]').val('');
+					return false;
+				});
+				$("form#games").submit(function () {
+					ws.send(JSON.stringify({
+						"type" : "game request",
+						"game name" : $('form#games [name=games]').val()
+					}));
+					return false;
+				});
+			});
+		</script>
+		<style type="text/css">
+			#indicator.open { background: #44ff44; }
+			#indicator.closed { background: #ff4444; }
+			form { display: block; }
+			#games { display: none; }
+			.from { 
+				margin-right: 2em;
+				font-weight: bolder;
+			}
+			.from.system { color: blue; }
+			iframe { border: 1px solid black; }
+		</style>
+	</head>
+	<body>
+		<div id="indicator">Connection hasn't started.</div>
+		<form id="name">
+			<input type="text" name="name"></input>
+			<input type="submit" value="change name!" />
+		</form>
+		<form id="room">
+			<input type="text" name="room"></input>
+			<input type="submit" value="change room!" />
+		</form>
+		<form id="games">
+			<select name="games">
+				{% for f in games %}
+					<option value="{{ f }}">{{ f }}</option>
+				{% end %}
+			</select>
+			<input type="submit" value="go!" />
+		</form>
+		<ol id="log">
+		</ol>
+		<form id="chat">
+			<input type="text" name="message"></input>
+			<input type="submit" value="send!" />
+		</form>
+		<iframe id="play-area" width=500 height=500></iframe>
+	</body>
+</html>
