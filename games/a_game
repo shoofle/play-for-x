@@ -14,7 +14,7 @@
 						"type" : "game result",
 						"player" : "{{ user }}",
 						"room" : "{{ room }}",
-						"game" : "a game",
+						"game" : "a_game",
 						"score" : $("[name=score]").val()
 					}));
 					return false;

@@ -1,3 +1,7 @@
+# Swap files. Screw'em!
+*.swp
+
+# Generated python files
 *.py[cod]
 
 # C extensions

@@ -66,16 +66,11 @@ class MainHandler(tornado.web.RequestHandler):
 			if game not in files: game = "default"
 			self.render(join(path_games, game), room=room_name, user=user_name)
 
-class AssetHandler(tornado.web.RequestHandler):
-	def get(self, uri):
-		print(uri)
-		self.render(uri)
-
 class SocketHandler(tornado.websocket.WebSocketHandler):
 	def open(self):
 		self.room_name = self.get_argument("room", "lobby")
 		self.user_name = self.get_argument("name", "guest")
-		print(str(self) + "socket connected to room:", self.room_name, "name:", self.user_name)
+		print("".join(str(self), "socket connected to room: {", self.room_name, "} name: {", self.user_name, "}"))
 		
 		if self.room_name not in rooms: rooms[self.room_name] = Room(self.room_name)
 		self.room = rooms[self.room_name]
@@ -123,25 +118,27 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 	def open(self, r=None, room=None, n=None, user=None):
 		self.room_name = self.get_argument("room", "lobby")
 		self.user_name = self.get_argument("name", "guest")
+		print(str(self) + " opened")
 	def on_message(self, message):
 		try:
 			m = json.loads(message)
 		except ValueError as e:
-			m = {"type" : "error", 
-					"player" : self.user_name, 
-					"room" : self.room_name, 
-					"content" : "Malformed results!"}
+			m = {"type" : "error", "player" : self.user_name, "room" : self.room_name, "content" : "Malformed results!"}
 		if self.room_name in rooms:
 			rooms[self.room_name].send(m)
+	def on_close(self):
+		print(str(self) + " closed")
 
 application = tornado.web.Application([
 	(r"/(games/[^/]+)?", MainHandler),
-	(r"/assets/.*", AssetHandler),
 	(r"/socket", SocketHandler),
 	(r"/results", GameSocketHandler),
-])
+], 
+static_path="/home/shoofle/play-for-x/",
+static_url_prefix="/static/"
+debug = True
+)
 
 if __name__ == "__main__":
 	application.listen(80)
 	tornado.ioloop.IOLoop.instance().start()
-

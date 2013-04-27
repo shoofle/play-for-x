@@ -1,0 +1,69 @@
+#indicator.open { background: #44ff44; }
+#indicator.closed { background: #ff4444; }
+#game-list { 
+	display: none; 
+}
+div {
+	margin: 4px;
+}
+div#navigation {
+	background: navy;
+}
+#game-list {
+	background: green;
+}
+#chat {
+	background: aqua;
+	display: inline-block;
+	float: left;
+}
+#game-area {
+	background: gray;
+	display: inline-block;
+	float: right;
+}
+div.play-container {
+	width: 20%;
+	display: inline-block;
+	border: 1px solid black;
+}
+div.play-container > * {
+	width: 100%;
+	text-align: center;
+	display: block;
+}
+/*
+iframe.play-area { width: 100%;	display: block; }
+.close_button {	width: 100%; text-align: center; display: block; }
+*/
+ul#names {
+	display: inline-block;
+}
+ol#log { 
+	display: inline-block;
+	list-style-type: circle; 
+	border: 1px solid black;
+}
+ul#game-list li { 
+	display: inline; 
+	margin: 1em;
+}
+li.chat { 
+	border: 1px solid black; 
+}
+.from { 
+	width: 6em;
+	font-weight: bolder;
+	display: inline-block;
+}
+.from.system { 
+	color: blue; 
+}
+.player {
+	border: 1px dashed blue;
+	padding: 5px;
+}
+.game {
+	border: 1px dashed green;
+	padding: 5px;
+}

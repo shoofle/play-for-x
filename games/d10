@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Just a Default Block</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function() {
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				var game_ws = new WebSocket(wsurl);
+				$('body *').addClass('hidden');
+				$('#blindfold').removeClass('hidden');
+				// Build the game state here, but don't start running yet.
+
+				$('#blindfold').click(function() {
+					$('body *').removeClass('hidden');
+					$('#blindfold').addClass('hidden');
+
+					// Run the game!
+					var result = Math.floor(Math.random()*10+1);
+					$('.result').html(result);
+					game_ws.send(JSON.stringify({
+						"type" : "game result",
+						"player" : "{{ user }}",
+						"room" : "{{ room }}",
+						"game" : "d10",
+						"score" : result
+					}));
+					game_ws.close();
+				});
+			});
+		</script>
+		<style type="text/css">
+			div {
+				border: 1px dashed black;
+				background: #bbccbb;
+			}
+			div#blindfold {
+				background: #dd2222;
+				margin: auto;
+				padding: 10em;
+			}
+			.hidden {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">Click to start!</div>
+		<h2>You got <span class="result"></span>!</h2>
+	</body>
+</html>

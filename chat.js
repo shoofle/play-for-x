@@ -1,7 +1,7 @@
 var last_evt;
 $(document).ready(function () {
-	var name = $('form#name [name=name]').val()
-	var room = $('form#room [name=room]').val()
+	var name = $('form#name [name=name]').val();
+	var room = $('form#room [name=room]').val();
 	//var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?(\?.*)?$/, "/socket$1");
 	var wsurl = "ws://li60-203.members.linode.com/socket?name=" + encodeURIComponent(name) + "&room=" + encodeURIComponent(room);
 	var ws = new WebSocket(wsurl);
@@ -18,17 +18,21 @@ $(document).ready(function () {
 			data = JSON.parse(evt.data);
 		}
 		catch (error) {
-			console.log(error);
-			data = {"type": "error", "content": error};
+			data = {"type": "error", "content": error, "pay-no-heed": "event logged in last_evt"};
 		}
 		last_evt = evt;
-		console.log(evt.data);
+		console.log(data);
 
 		var log_entry = $();
 		if (data.type == "game") {
 			var arr = [];
 			jQuery.each(data.parameters, function(key, value){arr.push(encodeURIComponent(key)+"="+encodeURIComponent(value));});
-			play_area.attr('src', data.url + "?" + arr.join("&"));
+			var play_area = $('<iframe></iframe>').addClass('play-area').attr('src', data.url + "?" + arr.join("&"));
+			var play_close = $('<button></button>').append('x').addClass('close_button');
+			play_close.click(function (evt) { $(evt.target).parents('.play-container').remove(); });
+			var play_container = $('<div></div>').addClass('play-container');
+			play_container.append(play_area).append(play_close);
+			$('#game-area').append(play_container);
 		}
 		else if (data.type == "game result") {
 			log_entry = $('<li></li>').addClass('result');
@@ -38,7 +42,6 @@ $(document).ready(function () {
 			log_entry.append(" in ");
 			log_entry.append($('<span></span>').html(data.game).addClass('game'));
 			$('#log').append(log_entry);
-			handlers(log_entry);
 		}
 		else if (data.type == "chat") {
 			log_entry = $('<li></li>').addClass('chat');
@@ -47,7 +50,6 @@ $(document).ready(function () {
 			// Want to somehow identify messages from players. Drag-and-drop would be really cool for sending games.
 			$('#log').append(log_entry);
 			// Add the player click handlers!
-			handlers(log_entry)
 		}
 		else if (data.type == "system message") {
 			log_entry = $('<li></li>').html(data.content).addClass('system message');
@@ -88,17 +90,17 @@ $(document).ready(function () {
 		indicator.html("Connection is closed.");
 	};
 	
-	$("form#name").submit(function () {
-		ws.send(JSON.stringify({"type" : "name change", "user name" : $('form#name [name=name]').val()}));
+	$("form#change-name").submit(function () {
+		ws.send(JSON.stringify({"type" : "name change", "user name" : $('form#change-name input[type=text]').val()}));
 		return false;
 	});
-	$('form#room').submit(function () {
-		ws.send(JSON.stringify({"type" : "room change", "room name" : $('form#room [name=room]').val()}));
+	$('form#change-room').submit(function () {
+		ws.send(JSON.stringify({"type" : "room change", "room name" : $('form#change-room input[type=text]').val()}));
 		return false;
 	});
-	$('form#chat').submit(function () {
+	$('form#chat-inputs').submit(function () {
 		ws.send(JSON.stringify({"type" : "chat", "content" : $('form#chat [name=message]').val()}));
-		$('form#chat [name=message]').val('');
+		$('form#chat-inputs [name=message]').val('');
 		return false;
 	});
 	function handlers (element) {
