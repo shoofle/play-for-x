@@ -5,20 +5,13 @@
 		<script src="http://code.jquery.com/jquery.min.js"></script>
 		<script type="text/javascript">
 			$(document).ready(function() {
-				//var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?$/, "/socket");
-				var room = "{{ room }}";
-				if (room != "") {
-					room = "/r/" + room;
-				}
-				var user = "{{ user }}";
-				if (user != "") {
-					user = "/n/" + user;
-				}
-				var wsurl = "ws://li60-203.members.linode.com" + room + user + "/results";
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
 				var game_ws = new WebSocket(wsurl);
 				$("div").click(function() {
 					game_ws.send(JSON.stringify({
-						"type" : "result",
+						"type" : "game result",
 						"player" : "{{ user }}",
 						"room" : "{{ room }}",
 						"game" : "default",

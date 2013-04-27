@@ -7,7 +7,7 @@
 		<script>
 			var last_evt;
 			$(document).ready(function () {
-				var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?$/, "/socket");
+				var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?(\?.*)$/, "/socket$1");
 				//var wsurl = "ws://li60-203.members.linode.com/{% if room != "" %}r/{{ room }}/{% end %}socket";
 				var ws = new WebSocket(wsurl);
 				var indicator = $("#indicator");
@@ -30,15 +30,7 @@
 					console.log(evt.data);
 
 					if (data.type == "game") {
-						var url = data.url;
-						var room = data.room;
-						var user = data.user;
-						//if (room != null) {
-						//	url = "r/" + room + "/" + url;
-						//}
-						//if (user != null) {
-						//	url = "n/" + user + "/" + url;
-						//}
+
 						play_area.attr('src', url);
 					}
 					else if (data.type == "chat") {
@@ -57,16 +49,10 @@
 						$('#log').append(log_entry);
 					}
 					else if (data.type == "error") {
-						var log_entry = $('<li></li>');
-						log_entry.addClass('error');
-						log_entry.html(data.content)
-						$('#log').append(log_entry);
+						$('#log').append($('<li></li>').addClass('error').html("Error: " + evt.data));
 					} 
 					else {
-						var log_entry = $('<li></li>');
-						log_entry.addClass('noclue');
-						log_entry.html(evt.data);
-						$('#log').append(log_entry);
+						$('#log').append($('<li></li>').addClass('noclue').html(evt.data));
 					}
 				};
 				ws.onclose = function(evt) {
@@ -89,6 +75,9 @@
 						"game name" : $('form#games [name=games]').val()
 					}));
 					return false;
+				});
+				$('.player').click(function() {
+
 				});
 			});
 		</script>

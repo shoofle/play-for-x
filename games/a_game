@@ -5,23 +5,17 @@
 		<script src="http://code.jquery.com/jquery.min.js"></script>
 		<script>
 			$(document).ready(function() {
-				var room = "{{ room }}";
-				if (room != "") {
-					room = "/r/" + room;
-				}
-				var user = "{{ user }}";
-				if (user != "") {
-					user = "/n/" + user;
-				}
-				var wsurl = "ws://li60-203.members.linode.com" + room + user + "/results";
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
 				var game_ws = new WebSocket(wsurl);
 				$("#game").submit(function (){
 					game_ws.send(JSON.stringify({
-						"type" : "result",
+						"type" : "game result",
 						"player" : "{{ user }}",
 						"room" : "{{ room }}",
 						"game" : "a game",
-						"score" : $("[name=value]").val()
+						"score" : $("[name=score]").val()
 					}));
 					return false;
 				});
@@ -33,7 +27,7 @@
 	<body>
 		<form id="game">
 			IT'S LIKE I CAN TOUCH YOU<br/>
-			<input type="text" name="value"></input>
+			<input type="text" name="score" />
 		</form>
 	</body>
 </html>
