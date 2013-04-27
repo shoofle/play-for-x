@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -6,7 +8,13 @@ from os.path import join, isfile
 import re
 import json
 
+
 #TODO: Would like to change from using the word "socket" on urls to using something else that doesn't imply the technology used. Not sure what to use, though. Not a big concern.
+
+ident_re_class = re.compile(r"\.([^ ]+)")
+ident_re_hex = re.compile(r"0x[^>]*")
+ids_util = lambda s: "<" + ident_re_class.search(s).group(1) + ident_re_hex.search(s).group(0) + ">"
+ids = lambda o: ids_util(str(o))
 
 path = "/home/shoofle/play-for-x"
 games_subdir = "games"
@@ -24,20 +32,20 @@ class Room(object):
 		self.sockets = []
 	
 	def add_socket(self, socket):
-		print(str(self) + ": " + str(socket) + " joined me, user name: " + socket.user_name)
+		print(ids(self) + ": " + ids(socket) + " joined me, user name: " + socket.user_name)
 		self.sockets.append(socket)
 		self.send({"type": "join", "player": socket.user_name, "room": self.name})
 		self.send_names()
 	
 	def remove_socket(self, socket):
-		print(str(self) + ": " + str(socket) + " parted me, user name: " + socket.user_name)
+		print(ids(self) + ": " + ids(socket) + " parted me, user name: " + socket.user_name)
 		if socket in self.sockets:
 			self.sockets.remove(socket)
 		self.send({"type": "part", "player": socket.user_name, "room": self.name})
 		self.send_names()
 
 	def change_name(self, socket, user_name=None):
-		print(str(self) + ": " + str(socket) + " changed name from " + socket.user_name + " to " + user_name)
+		print(ids(self) + ": " + ids(socket) + " changed name from " + socket.user_name + " to " + user_name)
 		self.send({"type": "name change", "old_name": socket.user_name, "new_name": user_name})
 		old_name = socket.user_name
 		socket.user_name = user_name
@@ -57,7 +65,7 @@ class MainHandler(tornado.web.RequestHandler):
 	def get(self, game=None):
 		room_name = self.get_argument("room", "lobby")
 		user_name = self.get_argument("name", "guest")
-		print("room name: " + room_name + " user name: " + user_name)
+		print(ids(self), "room name: ", room_name, " user name: ", user_name, " rest: ", game)
 		if game is None:
 			self.render("chat.html", games=files, room=room_name, user=user_name)
 		else:
@@ -66,18 +74,18 @@ class MainHandler(tornado.web.RequestHandler):
 			if game not in files: game = "default"
 			self.render(join(path_games, game), room=room_name, user=user_name)
 
-class SocketHandler(tornado.websocket.WebSocketHandler):
+class ChatSock(tornado.websocket.WebSocketHandler):
 	def open(self):
 		self.room_name = self.get_argument("room", "lobby")
 		self.user_name = self.get_argument("name", "guest")
-		print("".join(str(self), "socket connected to room: {", self.room_name, "} name: {", self.user_name, "}"))
 		
 		if self.room_name not in rooms: rooms[self.room_name] = Room(self.room_name)
 		self.room = rooms[self.room_name]
 		self.room.add_socket(self)
-		
+		print(ids(self), " connected to room: {", self.room_name, "} name: {", self.user_name, "}")
+
 	def on_message(self, message):
-		print(self, message)
+		print(ids(self), message)
 		try:
 			m = json.loads(message)
 			m_type = m["type"]
@@ -114,12 +122,13 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
 	def on_close(self):
 		self.room.remove_socket(self)
 
-class GameSocketHandler(tornado.websocket.WebSocketHandler):
+class GSH(tornado.websocket.WebSocketHandler):
 	def open(self, r=None, room=None, n=None, user=None):
 		self.room_name = self.get_argument("room", "lobby")
 		self.user_name = self.get_argument("name", "guest")
-		print(str(self) + " opened")
+		print(ids(self), " opened")
 	def on_message(self, message):
+		print(ids(self), " received: ", message)
 		try:
 			m = json.loads(message)
 		except ValueError as e:
@@ -127,16 +136,16 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 		if self.room_name in rooms:
 			rooms[self.room_name].send(m)
 	def on_close(self):
-		print(str(self) + " closed")
+		print(ids(self), " closed")
 
 application = tornado.web.Application([
 	(r"/(games/[^/]+)?", MainHandler),
-	(r"/socket", SocketHandler),
-	(r"/results", GameSocketHandler),
+	(r"/socket", ChatSock),
+	(r"/results", GSH),
 ], 
 static_path="/home/shoofle/play-for-x/",
-static_url_prefix="/static/"
-debug = True
+static_url_prefix="/static/",
+debug=True,
 )
 
 if __name__ == "__main__":

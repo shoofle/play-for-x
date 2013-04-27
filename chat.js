@@ -1,8 +1,9 @@
 var last_evt;
 $(document).ready(function () {
-	var name = $('form#name [name=name]').val();
-	var room = $('form#room [name=room]').val();
-	//var wsurl = ("" + window.location).replace(/^http/i, "ws").replace(/\/?(\?.*)?$/, "/socket$1");
+	var name_field = $('form#change-name input[type=text]');
+	var room_field = $('form#change-room input[type=text]');
+	var chat_field = $('form#chat-inputs input[type=text]');
+	var room = room_field.val(), name = name_field.val();
 	var wsurl = "ws://li60-203.members.linode.com/socket?name=" + encodeURIComponent(name) + "&room=" + encodeURIComponent(room);
 	var ws = new WebSocket(wsurl);
 	var indicator = $("#indicator");
@@ -28,11 +29,12 @@ $(document).ready(function () {
 			var arr = [];
 			jQuery.each(data.parameters, function(key, value){arr.push(encodeURIComponent(key)+"="+encodeURIComponent(value));});
 			var play_area = $('<iframe></iframe>').addClass('play-area').attr('src', data.url + "?" + arr.join("&"));
-			var play_close = $('<button></button>').append('x').addClass('close_button');
+			var play_close = $('<button></button>').append('x').addClass('close-button');
 			play_close.click(function (evt) { $(evt.target).parents('.play-container').remove(); });
 			var play_container = $('<div></div>').addClass('play-container');
 			play_container.append(play_area).append(play_close);
 			$('#game-area').append(play_container);
+			// This doesn't add a log entry.
 		}
 		else if (data.type == "game result") {
 			log_entry = $('<li></li>').addClass('result');
@@ -41,47 +43,37 @@ $(document).ready(function () {
 			log_entry.append($('<span></span>').html(data.score).addClass('score'));
 			log_entry.append(" in ");
 			log_entry.append($('<span></span>').html(data.game).addClass('game'));
-			$('#log').append(log_entry);
 		}
 		else if (data.type == "chat") {
-			log_entry = $('<li></li>').addClass('chat');
+			log_entry = $('<li></li>').addClass('chat-message');
 			log_entry.append($('<span></span>').html(data.player).addClass('from player'));
 			log_entry.append($('<span></span>').html(data.content).addClass('message'));
-			// Want to somehow identify messages from players. Drag-and-drop would be really cool for sending games.
-			$('#log').append(log_entry);
-			// Add the player click handlers!
 		}
 		else if (data.type == "system message") {
 			log_entry = $('<li></li>').html(data.content).addClass('system message');
-			$('#log').append(log_entry);
 		}
 		else if (data.type == "join") {
 			log_entry = $('<li></li>').html(data.player + " has joined " + data.room).addClass('system join');
-			$('#log').append(log_entry);
 		}
 		else if (data.type == "part") {
 			log_entry = $('<li></li>').html(data.player + " has left " + data.room).addClass('system part');
-			$('#log').append(log_entry);
 		}
 		else if (data.type == "name change") {
 			log_entry = $('<li></li>').html(data.old_name + " now known as " + data.new_name).addClass('system namechange');
-			$('#log').append(log_entry);
 		}
 		else if (data.type == "name list") {
 			var names_list = $('#names').html('');
 			jQuery.each(data.names, function() { names_list.append($('<li></li>').html(this).addClass('player')); });
-			// Add the player click handlers
 			handlers(names_list)
-			//names_list.find('.player').click(player_click);
+			// This doesn't add a log entry.
 		}
 		else if (data.type == "error") {
 			log_entry = $('<li></li>').addClass('error').html(data.content);
-			$('#log').append(log_entry);
 		} 
 		else {
 			log_entry = $('<li></li>').addClass('noclue').html(evt.data);
-			$('#log').append(log_entry);
 		}
+		$('#log').prepend(log_entry);
 		handlers(log_entry);
 	};
 	ws.onclose = function(evt) {
@@ -90,24 +82,34 @@ $(document).ready(function () {
 		indicator.html("Connection is closed.");
 	};
 	
-	$("form#change-name").submit(function () {
-		ws.send(JSON.stringify({"type" : "name change", "user name" : $('form#change-name input[type=text]').val()}));
+	$('form#change-name').submit(function () {
+		ws.send(JSON.stringify(
+				{"type" : "name change", "user name" : name_field.val()}
+				));
 		return false;
 	});
 	$('form#change-room').submit(function () {
-		ws.send(JSON.stringify({"type" : "room change", "room name" : $('form#change-room input[type=text]').val()}));
+		ws.send(JSON.stringify(
+				{"type" : "room change", "room name" : room_field.val()}
+				));
 		return false;
 	});
 	$('form#chat-inputs').submit(function () {
-		ws.send(JSON.stringify({"type" : "chat", "content" : $('form#chat [name=message]').val()}));
-		$('form#chat-inputs [name=message]').val('');
+		ws.send(JSON.stringify(
+				{"type" : "chat", "content" : chat_field.val()}
+				));
+		chat_field.val('');
 		return false;
 	});
 	function handlers (element) {
 		$(element).find('.player').each(function() {
 			this.ondragover = function(evt) { evt.preventDefault(); }
 			this.ondrop = function(evt) {
-				ws.send(JSON.stringify({"type" : "game request", "game_name" : evt.dataTransfer.getData("Text"), "target" : $(evt.target).html()}));
+				ws.send(JSON.stringify(
+						{"type" : "game request", 
+						"game_name" : evt.dataTransfer.getData("Text"), 
+						"target" : $(evt.target).html()}
+						));
 			};
 		});
 		$(element).find('.game').draggable = true;
@@ -118,7 +120,11 @@ $(document).ready(function () {
 			};
 		});
 		$(element).find('.game').click(function(evt) {
-			ws.send(JSON.stringify({"type" : "game request", "game_name" : $(evt.target).html(), "target" : $('form#name [name=name]').val()}));
+			ws.send(JSON.stringify(
+					{"type" : "game request", 
+					"game_name" : $(evt.target).html(),
+					"target" : name_field.val()}
+					));
 		});
 	}
 	handlers(document);
