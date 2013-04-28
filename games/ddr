@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>DDR, basically!</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="http://keith-wood.name/js/jquery.svg.js"></script>
+		<script type="text/javascript">
+			var arena, a_svg, elem, animate;
+			$(document).ready(function() {
+				//var wsurl = "ws://li60-203.members.linode.com/results";
+				//wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				//wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				//var game_ws = new WebSocket(wsurl);
+				
+				var svg_ns = "http://www.w3.org/2000/svg";
+				var xlink_ns = "http://www.w3.org/1999/xlink";
+				var active = false;
+				arena = $("#arena");
+				scrollers = $('#arena #scrollers');
+				//arena.svg();
+				//a_svg = arena.svg('get');
+
+				var base = 80, speed = 40, cutoff=100;
+				var hit_zone_width=5;
+				var score = 0, hits=0, misses=0;
+				var miss_bonus = -5, hit_bonus = 5;
+
+				var zone = document.createElementNS(svg_ns, 'polygon');
+				var min_x=0, max_x=100;
+				var min_y=base-hit_zone_width, max_y=base+hit_zone_width;
+				$(zone).attr('points', ''+min_x+','+min_y+' '+max_x+','+min_y+' '+max_x+','+max_y+' '+min_x+','+max_y).attr('class','debug zone');
+				arena.append(zone);
+
+				function make_button (delay, track) {
+					var butt = document.createElementNS(svg_ns, 'use');
+					butt.setAttributeNS(xlink_ns, 'xlink:href', '#button' + track);
+					$(butt).attr('x', 20*(track+1)).attr('y', base - delay*speed).attr('class', 'bu track' + track);
+					document.getElementById('scrollers').appendChild(butt);
+					return butt;
+				}
+				var track;
+				for (var i=0; i<100; i++) {
+					track = Math.floor(Math.random()*4);
+					if (track > 3) { continue; }
+					make_button(i*0.5+3, track);
+				}
+
+				var delay = 50;
+				animate = function anim (n) {
+					scrollers.children().each(function() {
+							// Move the scrolling elements, and do things for them if they are beyond the cutoff.
+							if (parseFloat($(this).attr('y')) > cutoff) {
+								ouch_behavior();
+								$(this).remove();
+							}
+							$(this).attr('y', parseFloat($(this).attr('y')) + (speed * delay/1000));
+							});
+					if (scrollers.children().length > 0) {
+						if (n < 1) {
+							setTimeout(anim, delay, n);
+						}
+						if (n > 1) {
+							setTimeout(anim, delay, n-1);
+						}
+					}
+				}
+
+				function hit_behavior(distance, element) {
+					$(element).remove();
+					score += hit_bonus*(hit_zone_width - distance)/hit_zone_width;
+					hits += 1;
+					$('#score').html(score);
+					$('#hits').html(hits);
+				}
+				function ouch_behavior() {
+					var ouch = document.createElementNS(svg_ns, 'use');
+					ouch.setAttributeNS(xlink_ns, 'xlink:href', '#ouch');
+					arena.append($(ouch).attr('x', 5).attr('y', 50));
+					setTimeout(function() { ouch.remove(); }, 1000);
+
+					misses += 1;
+					score += miss_bonus;
+					$('#score').html(score);
+					$('#misses').html(misses);
+				}
+
+				function inp (track) {
+					var got_a_hit = false;
+					arena.find('.track' + track).each(function() {
+							var distance = Math.abs(parseFloat($(this).attr('y')) - base)
+							if (distance < hit_zone_width) {
+								hit_behavior(distance, this);
+								got_a_hit = true;
+								return false;
+							}
+							});
+					if (!got_a_hit) {
+						ouch_behavior();
+					}
+				}
+
+				$(document).keydown(function (evt) {
+						if (!active && evt.which == 32) {
+							animate(-1);
+						} 
+						else {
+							switch (evt.which) {
+								case 37: inp(0); evt.preventDefault(); evt.stopPropagation(); break;
+								case 38: inp(1); evt.preventDefault(); evt.stopPropagation(); break;
+								case 39: inp(2); evt.preventDefault(); evt.stopPropagation(); break;
+								case 40: inp(3); evt.preventDefault(); evt.stopPropagation(); break;
+							}
+						}
+				});
+			});
+		</script>
+		<style type="text/css">
+			#report {
+				display: inline-block;
+				float: right;
+				margin-left: auto;
+			}
+			#hits { color: green; }
+			#misses { color: red; }
+			svg { border: 1px dashed black; }
+			polyline.ta, .ta {
+				stroke-width: 1;
+				stroke: black;
+				fill: rgba(255, 0, 0, 0.5);
+			}
+			polyline.bu, .bu {
+				fill: red;
+				stroke: black;
+				stroke-width: 1;
+			}
+			polygon.debug {
+				fill: rgba(0,0,255,0.7);
+				stroke-width: 1;
+				stroke: rgba(0,128,255,0.7);
+			}
+			circle.ouch {
+				fill: rgba(255,50,50,0.8);
+				stroke-width: 2;
+				stroke: black;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="report">
+			hits: <h2 id="hits">0</h2>
+			misses: <h2 id="misses">0</h2>
+			score: <h2 id="score">0</h2>
+		</div>
+		<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="600px" width="80%" viewBox="0 0 100 100" id="arena">
+			<defs>
+				<circle r="5" class="bu" id="button"></circle>
+				<circle r="5" class="ta" id="target"></circle>
+				<polyline points="-1,-10 1,-10 3,-8 3,8 11,0 13,0 15,2 15,4 1,18 -1,18" 
+				transform="scale(0.5 0.5) translate(0 -4)" id="half_arrow" />
+				<g id="arrow" transform="rotate(90 0 0)">
+					<use xlink:href="#half_arrow" />
+					<use xlink:href="#half_arrow" transform="scale(-1 1)" />
+				</g>
+				<g id="ouch">
+					<circle r=20 class="ouch"></circle>
+					<text dx="-20" dy="5">Ouch!</circle>
+				</g>
+				<use xlink:href="#arrow" transform="rotate(0 0 0)" id="button0"/>
+				<use xlink:href="#arrow" transform="rotate(90 0 0)" id="button1" />
+				<use xlink:href="#arrow" transform="rotate(180 0 0)" id="button2" />
+				<use xlink:href="#arrow" transform="rotate(-90 0 0)" id="button3" />
+			</defs>
+			<g>
+				<use x=20 y=80 xlink:href="#button0" id="target0" class="ta" />
+				<use x=40 y=80 xlink:href="#button1" id="target1" class="ta" />
+				<use x=60 y=80 xlink:href="#button2" id="target2" class="ta" />
+				<use x=80 y=80 xlink:href="#button3" id="target3" class="ta" />
+			</g>
+			<g id="scrollers">
+			</g>
+		</svg>
+		<h2>Press space to start.</h2>
+	</body>
+</html>
