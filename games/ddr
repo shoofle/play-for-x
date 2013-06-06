@@ -3,49 +3,90 @@
 	<head>
 		<title>DDR, basically!</title>
 		<script src="http://code.jquery.com/jquery.min.js"></script>
-		<script src="http://keith-wood.name/js/jquery.svg.js"></script>
 		<script type="text/javascript">
+			function ns_elem () { // Call with elem_assist(tag, ns[, attributes_i, ns_i[, attributes_none]])
+				if (typeof arguments[0] === "undefined") {
+					console.log('There was an error in the element assist function. Called with no valid tag name!');
+				}
+				var elem;
+				if (typeof arguments[1] === "string") {
+					// The second argument is a namespace. This is why this function even exists, people!
+					elem = document.createElementNS(arguments[1], arguments[0]);
+					for (var i=2; i<arguments.length; i+=2) {
+						// Iterate through pairs of arguments.
+						if (typeof arguments[i+1] === "undefined") {
+							// Un-namespaced set of attributes.
+							for (var key in arguments[i]) {
+								elem.setAttribute(key, arguments[i][key]);
+							}
+							// As below, unnecessary break; statement here.
+							break;
+						}
+						else {
+							for (var key in arguments[i]) {
+								elem.setAttributeNS(arguments[i+1], key, arguments[i][key]);
+							}
+						}
+					}
+				}
+				else {
+					elem = document.createElement(arguments[0]);
+					for (var i=1; i<arguments.length; i+=2) {
+						// Iterate through pairs of arguments, which should be attributes, namespace, attributes, namespace, etc., until a final attributes.
+						if (typeof arguments[i+1] === "undefined") {
+							// If the second argument is undefined, then we're done with namespaced attributes.
+							for (var key in arguments[i]) {
+								elem.setAttribute(key, arguments[i][key]);
+							}
+							// This break is actually unnecessary; it'll break out on the next iteration of the loop.
+							break;
+						}
+						else {
+							for (var key in arguments[i]) {
+								elem.setAttributeNS(arguments[i+1], key, arguments[i][key]);
+							}
+						}
+					}
+				}
+				return elem;
+			}
 			var arena, a_svg, elem, animate;
+			var active;
 			$(document).ready(function() {
-				//var wsurl = "ws://li60-203.members.linode.com/results";
-				//wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
-				//wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
-				//var game_ws = new WebSocket(wsurl);
-				
 				var svg_ns = "http://www.w3.org/2000/svg";
 				var xlink_ns = "http://www.w3.org/1999/xlink";
-				var active = false;
+				active = false;
 				arena = $("#arena");
 				scrollers = $('#arena #scrollers');
-				//arena.svg();
-				//a_svg = arena.svg('get');
 
-				var base = 80, speed = 40, cutoff=100;
-				var hit_zone_width=5;
+				var base = 80, speed = 100, cutoff=100;
+				var hit_zone_width=10;
 				var score = 0, hits=0, misses=0;
 				var miss_bonus = -5, hit_bonus = 5;
 
+				/* For debug purposes * /
 				var zone = document.createElementNS(svg_ns, 'polygon');
 				var min_x=0, max_x=100;
 				var min_y=base-hit_zone_width, max_y=base+hit_zone_width;
 				$(zone).attr('points', ''+min_x+','+min_y+' '+max_x+','+min_y+' '+max_x+','+max_y+' '+min_x+','+max_y).attr('class','debug zone');
 				arena.append(zone);
+				/* */
 
 				function make_button (delay, track) {
-					var butt = document.createElementNS(svg_ns, 'use');
-					butt.setAttributeNS(xlink_ns, 'xlink:href', '#button' + track);
-					$(butt).attr('x', 20*(track+1)).attr('y', base - delay*speed).attr('class', 'bu track' + track);
-					document.getElementById('scrollers').appendChild(butt);
+					var butt = ns_elem('use', svg_ns, 
+							{'xlink:href': '#button' + track}, xlink_ns, 
+							{'x': 20*(track+1), 'y': base-delay*speed, 'class': 'bu track' + track});
+					scrollers.append($(butt));
 					return butt;
 				}
 				var track;
 				for (var i=0; i<100; i++) {
-					track = Math.floor(Math.random()*4);
+					track = Math.floor(Math.random()*5);
 					if (track > 3) { continue; }
 					make_button(i*0.5+3, track);
 				}
 
-				var delay = 50;
+				var delay = 10;
 				animate = function anim (n) {
 					scrollers.children().each(function() {
 							// Move the scrolling elements, and do things for them if they are beyond the cutoff.
@@ -55,7 +96,7 @@
 							}
 							$(this).attr('y', parseFloat($(this).attr('y')) + (speed * delay/1000));
 							});
-					if (scrollers.children().length > 0) {
+					if (scrollers.children().length > 0 && active) {
 						if (n < 1) {
 							setTimeout(anim, delay, n);
 						}
@@ -86,11 +127,16 @@
 
 				function inp (track) {
 					var got_a_hit = false;
+					var offset, distance;
 					arena.find('.track' + track).each(function() {
-							var distance = Math.abs(parseFloat($(this).attr('y')) - base)
+							offset = parseFloat($(this).attr('y')) - base;
+							distance = Math.abs(offset);
 							if (distance < hit_zone_width) {
 								hit_behavior(distance, this);
 								got_a_hit = true;
+								return false;
+							}
+							if (offset < hit_zone_width) {
 								return false;
 							}
 							});
@@ -100,18 +146,24 @@
 				}
 
 				$(document).keydown(function (evt) {
-						if (!active && evt.which == 32) {
-							animate(-1);
-						} 
-						else {
-							switch (evt.which) {
-								case 37: inp(0); evt.preventDefault(); evt.stopPropagation(); break;
-								case 38: inp(1); evt.preventDefault(); evt.stopPropagation(); break;
-								case 39: inp(2); evt.preventDefault(); evt.stopPropagation(); break;
-								case 40: inp(3); evt.preventDefault(); evt.stopPropagation(); break;
-							}
+						if (evt.which == 32) {
+							active = !active;
+							if (active) { animate(-1); }
+							evt.preventDefault();
 						}
-				});
+						else if (active && (37 <= evt.which && evt.which <= 40)) {
+							// Valid arrow key input is between 37 and 40 inclusive.
+							var track_number;
+							switch (evt.which) {
+								case 37: track_number=0; break; // 37 is Left Arrow is track #0
+								case 38: track_number=1; break; // 38 is Up Arrow is track #1
+								case 39: track_number=3; break; // 39 is Right Arrow is track #3
+								case 40: track_number=2; break; // 40 is Down Arrow is track #2
+							}
+							inp(track_number);
+							evt.preventDefault();
+						}
+					});
 			});
 		</script>
 		<style type="text/css">
@@ -139,7 +191,7 @@
 				stroke: rgba(0,128,255,0.7);
 			}
 			circle.ouch {
-				fill: rgba(255,50,50,0.8);
+				fill: rgba(255,50,50,0.4);
 				stroke-width: 2;
 				stroke: black;
 			}
@@ -151,7 +203,7 @@
 			misses: <h2 id="misses">0</h2>
 			score: <h2 id="score">0</h2>
 		</div>
-		<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="600px" width="80%" viewBox="0 0 100 100" id="arena">
+		<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="600px" width="25%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax" id="arena">
 			<defs>
 				<circle r="5" class="bu" id="button"></circle>
 				<circle r="5" class="ta" id="target"></circle>
@@ -167,8 +219,8 @@
 				</g>
 				<use xlink:href="#arrow" transform="rotate(0 0 0)" id="button0"/>
 				<use xlink:href="#arrow" transform="rotate(90 0 0)" id="button1" />
-				<use xlink:href="#arrow" transform="rotate(180 0 0)" id="button2" />
-				<use xlink:href="#arrow" transform="rotate(-90 0 0)" id="button3" />
+				<use xlink:href="#arrow" transform="rotate(-90 0 0)" id="button2" />
+				<use xlink:href="#arrow" transform="rotate(180 0 0)" id="button3" />
 			</defs>
 			<g>
 				<use x=20 y=80 xlink:href="#button0" id="target0" class="ta" />
