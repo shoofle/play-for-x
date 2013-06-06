@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Just a Default Block</title>
-		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="../static/jquery.min.js"></script>
 		<script type="text/javascript">
 			$(document).ready(function() {
 				var wsurl = "ws://li60-203.members.linode.com/results";

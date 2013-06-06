@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>DDR, basically!</title>
-		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="../static/jquery.min.js"></script>
 		<script type="text/javascript">
 			function ns_elem () { // Call with elem_assist(tag, ns[, attributes_i, ns_i[, attributes_none]])
 				if (typeof arguments[0] === "undefined") {

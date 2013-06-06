@@ -2,99 +2,136 @@
 <html>
 	<head>
 		<title>Find the White Squares</title>
-		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="../static/jquery.min.js"></script>
 		<script type="text/javascript">
+			var config = {};
+/* Configuration variables for this game:
+config.time_limit = [number of seconds]
+config.rows_count = [number between 1 and 10]
+config.columns_count = [number between 1 and 10]
+config.fakes_count = [number between 1 and rows*columns]
+config.targets_count = [number between 1 and rows*columns]
+
+TODO: make this size properly to fit its window. */
+			config.time_limit = 15;
+
+			config.rows_count = 4;
+			config.columns_count = 4;
+
+			config.fakes_count = 5;
+			config.targets_count = 5;
+			
+			if (config.targets_count > config.rows_count*config.columns_count) { 
+				config.targets_count = config.rows_count*config.columns_count; 
+			}
+			if (config.fakes_count + config.targets_count > config.rows_count*config.columns_count) { 
+				config.fakes_count = config.rows_count*config.columns_count - config.targets_count;
+			}
+
+			var state = {};
+
+			var results = {};
+			results.target_hits = 0;
+			results.fake_hits = 0;
+			results.nothing_hits = 0;
+			results.time_to_win = 0;
+			results.ended_by_playing = false;
+
+
+
+
+//			function tbl_resize () { $('table').css('height', $('table').width()) }
+//			$(window).resize(tbl_resize);
+
+			function clicked_square(evt) {
+				var t = $(this);
+				if (t.is('.nothing')) {
+					t.removeClass('nothing').addClass('miss');
+					results.nothing_hits += 1;
+				} else if (t.is('.fake')) {
+					t.removeClass('fake').addClass('miss');
+					results.fake_hits += 1;
+				} else if (t.is('.target')) {
+					t.removeClass('target').addClass('hit');
+					results.target_hits += 1;
+					if ($('.target').length == 0) { 
+						ended_by_playing = true;
+						game_end(); 
+					}
+				}
+			}
+
+			var game_initialize = function (cfg) {
+				$('#arena').append($('<table></table>'));
+
+				for (var i=0; i<cfg.rows_count; i++) {
+					var new_row = $('<tr></tr>');
+					for(var j=0; j<cfg.columns_count; j++) {
+						var new_cell = $('<td></td>');
+						new_cell.addClass('nothing');
+						new_row.append(new_cell);
+					}
+					$('table').append(new_row);
+				}
+
+				results.target_hits = 0;
+				results.fake_hits = 0;
+				results.nothing_hits = 0;
+				results.time_to_win = 0;
+				results.ended_by_playing = false;
+
+				var set;
+				for (var i=0; i<cfg.targets_count; i++) {
+					set = $('table td.nothing');
+					var element = set[Math.floor(Math.random() * set.length)];
+					$(element).removeClass('nothing').addClass('target');
+				}
+				for (var i=0; i<cfg.fakes_count; i++) {
+					set = $('table td.nothing');
+					var element = set[Math.floor(Math.random() * set.length)];
+					$(element).removeClass('nothing').addClass('fake');
+				}
+
+				state.start_time = 0;
+			}
+
+			var game_start = function () {
+				$('table').on('click', '.fake, .nothing, .target', clicked_square);
+				state.start_time = new Date();
+				state.interval_id = setTimeout(game_end, config.time_limit*1000);
+
+				results.config = config;
+			}
+
+			var game_end = function () {
+				clearTimeout(state.interval_id);
+				
+				var current_time = new Date();
+				results.time_to_win = current_time - state.start_time;
+				
+				$('table').off('click', '.fake, .nothing, .target', clicked_square);
+				$('#report').append($('<h3>' + JSON.stringify(results) + '</h3>'));
+			}
+
+			var game_trash = function () {
+				$('table').off('click', '.fake, .nothing, .target', clicked_square);
+				$('#arena').html('');
+			}
+
 			$(document).ready(function() {
 				var wsurl = "ws://li60-203.members.linode.com/results";
 				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
 				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
-				var game_ws = new WebSocket(wsurl);
-				$('body *').addClass('hidden');
-				$('#blindfold').removeClass('hidden');
-
-				var number_of_rows = 4;
-				var number_of_columns = 4;
-
-				var number_of_fakes = 5;
-				var number_of_targets = 5;
 				
-				if (number_of_targets > number_of_rows*number_of_columns) { 
-					number_of_targets = number_of_rows*number_of_columns; 
-				}
-				if (number_of_fakes + number_of_targets > number_of_rows*number_of_columns) { 
-					number_of_fakes = number_of_rows*number_of_columns - number_of_targets;
-				}
-				
-				var results = {};
-				var start_time;
-				
-				function clicked_square(evt) {
-					var t = $(this);
-					if (t.is('.nothing')) {
-						t.removeClass('nothing').addClass('solved');
-						$('#report').append($('<p>Got one wrong!</p>'));
-						results.score -= 1;
-					} else if (t.is('.fake')) {
-						t.removeClass('fake').addClass('solved');
-						$('#report').append($('<p>Got one wrong!</p>'));
-						results.score -= 4;
-					} else if (t.is('.target')) {
-						t.removeClass('target').addClass('target-solved');
-						$('#report').append($('<p>Got one right!</p>'));
-						results.score += 1;
-						if ($('.target').length == 0) { 
-							won_by_playing = true;
-							game_end(); 
-						}
-					}
-				}
-				
-				function game_initialize () {
-					for (var i=0; i<number_of_rows; i++) {
-						var new_row = $('<tr></tr>');
-						for(var j=0; j<number_of_columns; j++) {
-							var new_cell = $('<td></td>');
-							new_cell.addClass('nothing');
-							new_row.append(new_cell);
-						}
-						$('table').append(new_row);
-					}
-
-					results.score = 0;
-					results.time_to_win;
-					results.won_by_playing = false;
-
-					var set;
-					for (var i=0; i<number_of_targets; i++) {
-						set = $('table td.nothing');
-						var element = set[Math.floor(Math.random() * set.length)];
-						$(element).removeClass('nothing').addClass('target');
-					}
-					for (var i=0; i<number_of_fakes; i++) {
-						set = $('table td.nothing');
-						var element = set[Math.floor(Math.random() * set.length)];
-						$(element).removeClass('nothing').addClass('fake');
-					}
-					$('table').on('click', '.fake, .nothing, .target', clicked_square);
-				}
-
-				function game_start () {
-					start_time = new Date();
-					setTimeout(20000, game_end);
-				}
-
-				function game_end () {
-					var current_time = new Date();
-					results.time_to_win = current_time - start_time;
-					$('table').off('click', '.fake, .nothing, .target', clicked_square);
-					$('#report').append($('<h3>Good job! You got ' + results.score + ' points after ' + results.time_to_win + 'ms!</h3>'));
-				}
-
-				game_initialize();
+				$('#arena').hide();
+				$('#blindfold').show();
+				$('#blindfold #time-limit').html(config.time_limit);
+		
+				game_initialize(config);
 
 				$('#blindfold').click(function() {
-					$('body *').removeClass('hidden');
-					$('#blindfold').addClass('hidden');
+					$('#arena').show();
+					$('#blindfold').hide();
 
 					game_start();
 				});
@@ -106,33 +143,37 @@
 				margin: auto;
 				padding: 10em;
 			}
-			.hidden {
-				display: none;
-			}
 			td {
-				width: 2em;
-				height: 2em;
+				width: 4em;
+				height: 4em;
 				background-color: black;
 			}
-			td.target-solved { background-color: white; }
-			td.solved { background-color: red; }
-			td.fake:hover {
-				-webkit-animation: fakefade 1.5s forwards;
-			}
+			
+			td.fake:hover { -webkit-animation: fakefade 1.5s forwards; -moz-animation: targetfade 3s forwards; }
 			@-webkit-keyframes fakefade {
 				to { background-color: gray; }
 			}
-			td.target:hover {
-				-webkit-animation: targetfade 3s forwards;
-			}
+			td.miss { background-color: red; }
+			
+			td.target:hover { -webkit-animation: targetfade 3s forwards; -moz-animation: targetfade 3s forwards; }
 			@-webkit-keyframes targetfade {
 				to { background-color: white; }
 			}
+			td.hit { background-color: white; }
 		</style>
 	</head>
 	<body>
-		<div id="blindfold">Click to start!</div>
-		<table></table>
+		<div id="blindfold">
+			<ul>
+				<li>Mouse over these boxes!</li>
+				<li>Some will light up - click the ones that turn white!</li>
+				<li>You don't need to wait for them to finish changing color.</li>
+				<li>Beware! Some turn grey and then stop!</li>
+				<li>There is a <span id="time-limit"></span> second time limit.</li>
+				<li>Click in this rectangle to start.</li>
+			</ul>
+		</div>
+		<div id="arena"></div>
 		<div id="report"></div>
 	</body>
 </html>

@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Test of SVG-in-HTML embedding, with scripting!</title>
-		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="../static/jquery.min.js"></script>
 		<script type="text/javascript">
 			$(document).ready(function() {
 				var wsurl = "ws://li60-203.members.linode.com/results";

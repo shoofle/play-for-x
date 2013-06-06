@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Just a Scratch of Raphael</title>
+		<script src="../static/jquery.min.js"></script>
+		<script src="../static/raphael-min.js"></script>
+		<script type="text/javascript">
+			var randall = "http://images2.wikia.nocookie.net/__cb20070924191742/wowwiki/images/6/6d/NightElfHuntress.jpg";
+			var randall_2 = "http://images2.wikia.nocookie.net/__cb20130329181052/wowwiki/images/b/b2/Sentineld.jpg";
+			var randall_three = "http://fc01.deviantart.net/fs48/f/2009/210/5/9/night_elf___close_up_by_Ketka.jpg";
+			var randall_iv = "http://www.freakygaming.com/gallery/game_wallpapers/world_of_warcraft/night_elf_cinematic_art.jpg";
+			var randall_saturn_blank = "http://images.wikia.com/fairytail/images/f/fd/Middle_finger.jpg";
+			var randall_mode = true;//false;
+			// Configuration
+			var digger_count = 3;
+			var probe_count = 7;
+			var target_count = 3;
+			
+			// State
+			var paper, circle, e, x, y;
+			var probes = [], probe_stock = [];
+			var targets = [];
+			var diggers = [], digger_stock = [];
+
+			var results = {};
+			$(document).ready(function() {
+				var hud_left = Raphael(10, 30, 20, 400);
+				var paper = Raphael(40, 30, 400, 400);
+				var hud_right = Raphael(450, 30, 20, 400);
+				var readout = Raphael(480, 30, 60, 400);
+
+				viewbox_size = {x: 200, y: 200};
+				hud_left.setViewBox(0, 0, 10, viewbox_size.y);
+				paper.setViewBox(0, 0, viewbox_size.x, viewbox_size.y);
+				hud_right.setViewBox(0, 0, 10, viewbox_size.y);
+				readout.setViewBox(0, 0, 30, viewbox_size.y);
+
+				for (var i=0; i<digger_count; i++) {
+					if (randall_mode) { digger_stock.push(hud_left.image(randall, 5, 5+10*i, 4, 4)); }
+					else { digger_stock.push(hud_left.circle(5, 5+10*i, 4)); }
+				}
+				for (var i=0; i<probe_count; i++) {
+					if (randall_mode) { probe_stock.push(hud_right.image(randall_2, 5, 5+10*i, 2, 2)); }
+					else { probe_stock.push(hud_right.circle(5, 5+10*i, 2)); }
+				}
+				for (var i=0; i<target_count; i++) {
+					var targ = {};
+					targ.energy = 1;
+					targ.position = {x: Math.random()*viewbox_size.x, y: Math.random()*viewbox_size.y};
+					targ.icon = readout.rect(5, 10 + 30*i, 20, 20);
+					if (randall_mode) { targ.fill = readout.image(randall_iv, 5, 10 + 30*i, 20, 20); }
+					else { targ.fill = readout.rect(5, 10 + 30*i, 20, 20).attr({fill: '#228'}); }
+					targets.push(targ);
+				}
+				results.points = [];
+				
+				function take_from_targ (targ, amount) {
+					amount = amount*targ.energy;
+					targ.energy -= amount;
+
+					targ.fill.animate({
+							transform: 't0,' + (1-targ.energy)*20,
+							height: targ.energy*20,
+							}, 500, '<>');
+					return amount;
+				}
+				function deploy_probe_at (position) {
+					var pstr = position.x + ',' + position.y;
+
+					if (probe_stock.length == 0) {
+						alert("out of probes!");
+					}
+					var stocked_probe = probe_stock.pop();
+					stocked_probe.remove();
+
+					var probe = {};
+					probe.position = position;
+					if (randall_mode) { probe.icon = paper.image(randall_2, probe.position.x - 12, probe.position.y - 7, 24, 15); }
+					else { probe.icon = paper.circle(position.x, position.y, 2); }
+					probe.arrows = [];
+					jQuery.each(targets, function(i, t) {
+						var me_to_you = { x: t.position.x - position.x, y: t.position.y - position.y };
+						var angle = Math.atan2(me_to_you.y, me_to_you.x)*180/Math.PI;
+						var new_arrow;
+						if (randall_mode) { 
+							new_arrow = paper.image(randall_three, position.x - 10, position.y - 30, 20, 22);
+							new_arrow.transform('r90,' + pstr + 'r' + angle + ',' + pstr);
+						}
+						else { 
+							new_arrow = paper.rect(position.x, position.y, 1, 4); 
+							new_arrow.transform('r270,' + pstr + 'r' + angle + ',' + pstr + 't-0.5,4');
+						}
+						probe.arrows.push(new_arrow);
+					});
+					probes.push(probe);
+				}
+				function deploy_digger_at (position) {
+					if (digger_stock.length == 0) {
+						alert("out of diggers!");
+					}
+					var stocked_digger = digger_stock.pop();
+					stocked_digger.remove();
+					
+					var digger = {};
+					digger.position = position;
+					if (randall_mode) { digger.icon = paper.image(randall, digger.position.x - 10, digger.position.y - 14, 20, 28) ;}
+					else { digger.icon = paper.circle(digger.position.x, digger.position.y, 4); }
+					digger.distances = []
+
+					var index_of_closest = 0;
+					for (var i=0; i<targets.length; i++) {
+						var xdiff = targets[i].position.x - digger.position.x;
+						var ydiff = targets[i].position.y - digger.position.y;
+						var distance = Math.sqrt(xdiff*xdiff + ydiff*ydiff);
+						digger.distances.push(distance);
+						if (distance < digger.distances[index_of_closest]) { index_of_closest = i; }
+					}
+					
+					digger.target = targets[index_of_closest];
+					var fraction = 50/(50 + (digger.distances[index_of_closest]*digger.distances[index_of_closest]));
+					digger.haul = take_from_targ(digger.target, fraction);
+					diggers.push(digger);
+
+					results.points.push(100*digger.haul);
+					console.log("Received " + digger.haul + " points from target #" + index_of_closest);
+				}
+
+				$('svg').on('click', function(evt) { 
+					var pos = { x: evt.offsetX*viewbox_size.x/paper.width, 
+								y: evt.offsetY*viewbox_size.y/paper.height, };
+					if (evt.shiftKey) {	
+						deploy_digger_at(pos);
+					} else {
+						deploy_probe_at(pos);
+					}
+					if (digger_stock.length == 0) {
+						game_end();
+					}
+				});
+
+				function game_end() {
+					var sum = 0; jQuery.each(results.points, function(i,p) { sum+=p; });
+					console.log(sum);
+					jQuery.each(targets, function(i, t) {
+						if (randall_mode) { paper.image(randall_saturn_blank, t.position.x-10, t.position.y-10, 20, 20); }
+						else { paper.circle(t.position.x, t.position.y, 7).attr({zLevel: 10, fill: '#811'}).toBack(); }
+					});
+					alert("You got " + sum + " points! Good job!");
+				}
+			});
+		</script>
+		<style type="text/css">
+			svg { border: 1px dashed black; }
+		</style>
+	</head>
+	<body>
+		<div id="instructions">Click to deploy a probe. Probes indicate the directions to the targets. Shift-click to deploy a digger. Limited supplies of each!</div>
+	</body>
+</html>

@@ -62,17 +62,19 @@ class Room(object):
 	def __len__(self): return len(self.sockets)
 
 class MainHandler(tornado.web.RequestHandler):
-	def get(self, game=None):
+	def get(self, path=None):
 		room_name = self.get_argument("room", "lobby")
 		user_name = self.get_argument("name", "guest")
-		print(ids(self), "room name: ", room_name, " user name: ", user_name, " rest: ", game)
-		if game is None:
+		print(ids(self), "room name: ", room_name, " user name: ", user_name, " rest: ", path)
+		if path is None:
 			self.render("chat.html", games=files, room=room_name, user=user_name)
 		else:
-			print(game)
-			game = game.split("/")[1]
-			if game not in files: game = "default"
-			self.render(join(path_games, game), room=room_name, user=user_name)
+			path_segments = path.split("/")
+			if path_segments[0] == "games":
+				if path_segments[1] not in files: path_segments[1] = "default"
+				self.render(join(path_games, path_segments[1]), room=room_name, user=user_name)
+			else:
+				self.render(join(*path_segments))
 
 class ChatSock(tornado.websocket.WebSocketHandler):
 	def open(self):
@@ -139,11 +141,11 @@ class GSH(tornado.websocket.WebSocketHandler):
 		print(ids(self), " closed")
 
 application = tornado.web.Application([
-	(r"/(games/[^/]+)?", MainHandler),
 	(r"/socket", ChatSock),
 	(r"/results", GSH),
+	(r"/(games/.*)?", MainHandler),
 ], 
-static_path="/home/shoofle/play-for-x/",
+static_path="/home/shoofle/play-for-x/static/",
 static_url_prefix="/static/",
 debug=True,
 )
