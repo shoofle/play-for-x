@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Example Game for Play-For-X</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+		<script src="raphael-min.js"></script>
+		<script type="text/javascript">
+			// Configuration controls the state of the game when it's initialized - how many enemies are you fighting?
+			// How fast does it scroll? This is the kind of thing that gets set by the DM when they fine-tune a minigame.
+			var configuration = {};
+			// Here we set a default number of targets. This could, alternately, be set by the server (in which case
+			// it'd be curlybrace curlybracetemplated ) or possibly just by the page that loads it passing in a configuration.
+			configuration.digger_count = 3;
+			configuration.probe_count = 5;
+			configuration.target_count = 3;
+			configuration.scale = 200;
+			configuration.time_limit = 100000;
+			configuration.fraction_from_distance = function (distance) { return 50/(50 + distance*distance); }
+
+			// The state object might not actually be necessary. In theory, it's just used for containing all the stuff
+			// that would otherwise be chucked into global variables. I think the only reason I have it here is to 
+			// distinguish it from the data that goes in the results object.
+			var state = {};
+			state.probes = []; state.probe_stock = [];
+			state.diggers = []; state.digger_stock = [];
+			state.targets = [];
+
+			// Results simply stores the final results of the minigame, with things like score, time to completion, and
+			// so on. This might not be exactly the object that gets sent back to the game server, but it contains all
+			// that information - the final server response can be constructed entirely from the results object.
+			var results = {};
+
+			$(document).ready(function() {
+				// The WebSocket connecting us to the game server. This doesn't actually need to be a websocket, unless
+				// we want to, at some point, add the functionality for watching someone else play their game.
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				var game_ws = new WebSocket(wsurl);
+
+				// Page initialization. Most games will have a blindfold and hide everything else, or something. I think.
+				$('#arena').hide();
+				$('#blindfold').show();
+
+				var hud_left, paper, hud_right, readout;
+
+				function click_handler (evt) {
+					var pos = { x: evt.offsetX*200 / paper.width, y: evt.offsetY*200 / paper.height };
+					if (evt.shiftKey) { deploy_digger_at(pos); }
+					else { deploy_probe_at(pos); }
+					if (state.digger_stock.length == 0) { results.ended_by_playing = true; game_end(); }
+				}
+				function generate_path_string (x, y, radius, fraction) {
+					var oy = (2*fraction - 1)*radius;
+					var ox = Math.sqrt(radius*radius - oy*oy);
+					var pathstr = 'M'+x+','+y+'m'+(-ox)+','+(-oy);
+					pathstr = pathstr + 'a'+radius+','+radius+',0,'+(fraction>0.5 ?'1':'0')+',0,'+(2*ox)+',0';
+					pathstr = pathstr + 'l'+(-2*ox)+',0';
+					return pathstr;
+				}
+				function deploy_probe_at (position) {
+					var pstr = position.x + ',' + position.y;
+
+					var stocked_probe = state.probe_stock.pop();
+					stocked_probe.remove();
+
+					var probe = {};
+					probe.position = position;
+					probe.icon = paper.circle(position.x, position.y, 2);
+					probe.arrows = [];
+					jQuery.each(state.targets, function(i, t) {
+						var me_to_you = { x: t.position.x - position.x, y: t.position.y - position.y };
+						var angle = Math.atan2(me_to_you.y, me_to_you.x)*180/Math.PI;
+						var new_arrow = paper.rect(position.x - 0.5, position.y - 4, 1, 4); 
+						new_arrow.transform('r90,' + pstr + 'r' + angle + ',' + pstr + 't0,-5');
+						probe.arrows.push(new_arrow);
+					});
+					state.probes.push(probe);
+				}
+				function deploy_digger_at (position) {
+					state.digger_stock.pop().remove(); // Delete a digger from the stock.
+					
+					var digger = {};
+					digger.position = position;
+					digger.icon = paper.circle(digger.position.x, digger.position.y, 5);
+
+					digger.distances = [];
+
+					var index_of_closest = 0;
+					for (var i=0; i<state.targets.length; i++) {
+						var xdiff = state.targets[i].position.x - digger.position.x, ydiff = state.targets[i].position.y - digger.position.y;
+						var distance = Math.sqrt(xdiff*xdiff + ydiff*ydiff);
+						digger.distances.push(distance);
+						if (distance < digger.distances[index_of_closest]) { index_of_closest = i; }
+					}
+
+					digger.label = paper.text(digger.position.x, digger.position.y, index_of_closest+1);
+					
+					digger.target = state.targets[index_of_closest];
+					
+					var amount = configuration.fraction_from_distance(digger.distances[index_of_closest])*digger.target.energy;
+					digger.target.energy -= amount;
+					digger.haul = amount;
+
+					digger.target.fill.animate({
+						transform: 't0,' + (1-digger.target.energy)*20,
+						height: digger.target.energy*20,
+						}, 500, '<>');
+					
+					state.diggers.push(digger);
+					
+					results.points.push(digger.haul);
+					console.log("Received " + 100*digger.haul + " points from target #" + index_of_closest);
+				}
+
+				// Initialize the game state. This should generate enemies, obstacles, targets, etc as necessary, and
+				// according to the config argument.
+				function game_initialize (config) {
+					results.score = 0;
+					results.time_to_win = 0;
+					results.ended_by_playing = false;
+
+					hud_left = Raphael($('#left-hud')[0], 20, 400);
+					hud_left.setViewBox(0, 0, 10, 200);
+					paper = Raphael($('#main')[0], 400, 400);
+					paper.setViewBox(0, 0, 200, 200);
+					hud_right = Raphael($('#right-hud')[0], 20, 400);
+					hud_right.setViewBox(0, 0, 10, 200);
+					readout = Raphael($('#readout')[0], 60, 400);
+					readout.setViewBox(0, 0, 30, 200);
+	
+					for (var i=0; i<config.digger_count; i++) {
+						state.digger_stock.push(hud_left.circle(5, 5+10*i, 4));
+					}
+					for (var i=0; i<config.probe_count; i++) {
+						state.probe_stock.push(hud_right.circle(5, 5+10*i, 2));
+					}
+					for (var i=0; i<config.target_count; i++) {
+						var targ = {};
+						targ.energy = 1;
+						targ.position = {x: Math.random()*200, y: Math.random()*200};
+						targ.icon = readout.rect(5, 10 + 30*i, 20, 20);
+						targ.fill = readout.rect(5, 10 + 30*i, 20, 20).attr({fill: '#228'});
+						state.targets.push(targ);
+					}
+					results.points = [];
+				}
+
+				// This actually begins gameplay. When the player clicks "start", this happens and they have to start playing.
+				function game_start () {
+					state.start_time = new Date();
+					$('#main').on('click', click_handler);
+
+					state.interval_id = setTimeout(game_end, configuration.time_limit);
+				}
+
+				// Game end conditions are here. This can happen in a variety of ways, so it's best to put it in a function
+				// of its own. This sends results to the server and/or tells the player how they did. In theory, in this 
+				// function the logic might happen to tell the chat window we're in to undisplay our iframe.
+				function game_end () {
+					$('#main').off('click', click_handler);
+					// Make sure the game's not still counting down for a pending end of game.
+					clearTimeout(state.interval_id);
+
+					// Do the computations required for figuring out the score and stuff.
+					results.score = 0;
+					jQuery.each(results.points, function(i,v){results.score += v;});
+					var current_time = new Date();
+					results.time_to_win = current_time - state.start_time;
+
+					// Tell them how they did by appending some text to the #report tag. This can be removed.
+					jQuery.each(state.targets, function(i,t) {
+						var c = paper.circle(t.position.x, t.position.y, 0);
+						c.toBack();
+						c.animate({r: 7, fill: '#811'}, 500, '<>'); 
+					});
+
+					// Report how they did to the console, for good measure. Don't bother taking this out, it could be useful.
+					console.log('Game ended with results:');
+					console.log(results);
+					console.log('And final state:');
+					console.log(state);
+
+					// Make sure the game stops playing.
+					game_trash();
+					
+					// Send results to the server.
+					// Not yet written.
+				}
+
+				// Uninitialize the game - basically, do the opposite of game_initialize. Delete elements, unregister handlers, etc.
+				function game_trash () {
+					// I'm honestly not sure whether event handler deregistration should happen in the game de-initializer or
+					// in the game_end function. I guess that the handler *registration* should happen in the initializer, which
+					// answers the question fine.
+				}
+
+				game_initialize(configuration);
+
+				$('#blindfold').on('click', function() {
+					// Removing the blindfold has to be doable in some better way.
+					$('#arena').show();
+					$('#blindfold').hide();
+					game_start();
+				});
+			});
+		</script>
+		<style type="text/css">
+			#blindfold {
+				background-color: red;
+				padding: 5em;
+				width: 100%;
+			}
+			#arena {
+				width: 100%;
+			}
+			#arena>div { display: inline-block; }
+			
+			#left-hud { left: 10px; }
+			#main { left: 40px; }
+			#right-hud { left: 450px; }
+			#readout { left: 480px; }
+
+			svg { border: 1px dashed black; }
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">
+			Click to start!<br />
+			Then, click inside the grey area to accumulate points!<br />
+			If you get five points, you win!<br />
+			Time limit: 5 seconds!<br />
+		</div>
+		<div id="arena">
+			<div id="left-hud"></div>
+			<div id="main"></div>
+			<div id="right-hud"></div>
+			<div id="readout"></div>
+		</div>
+	</body>
+</html>

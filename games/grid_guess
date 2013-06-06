@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Find the White Squares</title>
+		<script src="http://code.jquery.com/jquery.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function() {
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				var game_ws = new WebSocket(wsurl);
+				$('body *').addClass('hidden');
+				$('#blindfold').removeClass('hidden');
+
+				var number_of_rows = 4;
+				var number_of_columns = 4;
+
+				var number_of_fakes = 5;
+				var number_of_targets = 5;
+				
+				if (number_of_targets > number_of_rows*number_of_columns) { 
+					number_of_targets = number_of_rows*number_of_columns; 
+				}
+				if (number_of_fakes + number_of_targets > number_of_rows*number_of_columns) { 
+					number_of_fakes = number_of_rows*number_of_columns - number_of_targets;
+				}
+				
+				var results = {};
+				var start_time;
+				
+				function clicked_square(evt) {
+					var t = $(this);
+					if (t.is('.nothing')) {
+						t.removeClass('nothing').addClass('solved');
+						$('#report').append($('<p>Got one wrong!</p>'));
+						results.score -= 1;
+					} else if (t.is('.fake')) {
+						t.removeClass('fake').addClass('solved');
+						$('#report').append($('<p>Got one wrong!</p>'));
+						results.score -= 4;
+					} else if (t.is('.target')) {
+						t.removeClass('target').addClass('target-solved');
+						$('#report').append($('<p>Got one right!</p>'));
+						results.score += 1;
+						if ($('.target').length == 0) { 
+							won_by_playing = true;
+							game_end(); 
+						}
+					}
+				}
+				
+				function game_initialize () {
+					for (var i=0; i<number_of_rows; i++) {
+						var new_row = $('<tr></tr>');
+						for(var j=0; j<number_of_columns; j++) {
+							var new_cell = $('<td></td>');
+							new_cell.addClass('nothing');
+							new_row.append(new_cell);
+						}
+						$('table').append(new_row);
+					}
+
+					results.score = 0;
+					results.time_to_win;
+					results.won_by_playing = false;
+
+					var set;
+					for (var i=0; i<number_of_targets; i++) {
+						set = $('table td.nothing');
+						var element = set[Math.floor(Math.random() * set.length)];
+						$(element).removeClass('nothing').addClass('target');
+					}
+					for (var i=0; i<number_of_fakes; i++) {
+						set = $('table td.nothing');
+						var element = set[Math.floor(Math.random() * set.length)];
+						$(element).removeClass('nothing').addClass('fake');
+					}
+					$('table').on('click', '.fake, .nothing, .target', clicked_square);
+				}
+
+				function game_start () {
+					start_time = new Date();
+					setTimeout(20000, game_end);
+				}
+
+				function game_end () {
+					var current_time = new Date();
+					results.time_to_win = current_time - start_time;
+					$('table').off('click', '.fake, .nothing, .target', clicked_square);
+					$('#report').append($('<h3>Good job! You got ' + results.score + ' points after ' + results.time_to_win + 'ms!</h3>'));
+				}
+
+				game_initialize();
+
+				$('#blindfold').click(function() {
+					$('body *').removeClass('hidden');
+					$('#blindfold').addClass('hidden');
+
+					game_start();
+				});
+			});
+		</script>
+		<style type="text/css">
+			div#blindfold {
+				background: #dd2222;
+				margin: auto;
+				padding: 10em;
+			}
+			.hidden {
+				display: none;
+			}
+			td {
+				width: 2em;
+				height: 2em;
+				background-color: black;
+			}
+			td.target-solved { background-color: white; }
+			td.solved { background-color: red; }
+			td.fake:hover {
+				-webkit-animation: fakefade 1.5s forwards;
+			}
+			@-webkit-keyframes fakefade {
+				to { background-color: gray; }
+			}
+			td.target:hover {
+				-webkit-animation: targetfade 3s forwards;
+			}
+			@-webkit-keyframes targetfade {
+				to { background-color: white; }
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">Click to start!</div>
+		<table></table>
+		<div id="report"></div>
+	</body>
+</html>
