@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Roll the Dice!</title>
+		<script src="../static/jquery.min.js"></script>
+		<script type="text/javascript">
+			var config = {};
+			config.dice = [];
+			var d20 = {integer: true, min: 1, max: 20, name: 'd20'};
+
+			config.dice.push(d20);
+			config.dice.push(d20);
+			config.dice.push(d20);
+
+			var state = {};
+			
+			var results = {};
+
+			var game_initialize = function (cfg) {
+				$('#arena').append($('<ul></ul>').attr('id', 'dice'));
+				state.dice = [];
+
+				jQuery.each(cfg.dice, function(i, die) {
+					var die_obj = {};
+					die_obj.integer = die.integer; die_obj.min = die.min; die_obj.max = die.max; die_obj.name = die.name;
+					die_obj.row = $('<li></li>').addClass('die');
+					die_obj.row.append($('<label></label>').html(die.name + ':'));
+					die_obj.row.append($('<span></span>').addClass('result'));
+					$('#dice').append(die_obj.row);
+					state.dice.push(die_obj);
+				});
+
+				if (cfg.dice.length > 1) {
+					var total_div = $('<div></div>').attr('id', 'total');
+					total_div.append($('<label></label>').html('Total:'));
+					total_div.append($('<span></span>').addClass('result'));
+					$('#arena').append(total_div);
+				}
+
+				results.sum = 0;
+				results.rolls = [];
+			};
+
+			var game_start = function () {
+				jQuery.each(state.dice, function(i, die) {
+					var value;
+					if (die.integer) { value = Math.floor(Math.random()*(die.max - die.min + 1) + die.min); }
+					else { value = Math.random()*(die.max - die.min) + die.min; }
+					
+					die.row.find('.result').html(value);
+					results.sum += value;
+					results.rolls.push(value);
+				});
+				$('#total .result').html(results.sum);
+				
+				game_end();
+			};
+
+			var game_end = function () {
+				
+				var res = {"type" : "game result",
+								"player" : "{{ user }}",
+								"room" : "{{ room }}",
+								"game" : "dice",
+								"rolls" : results.rolls,
+								"score" : results.sum};
+				console.log(res);
+				/*	$('.result').html(result);
+					game_ws.send(JSON.stringify({
+						"type" : "game result",
+						"player" : "{{ user }}",
+						"room" : "{{ room }}",
+						"game" : "d10",
+						"score" : result
+					}));
+				*/
+			};
+
+			var game_trash = function () {
+				$('#arena').html('');
+			};
+		
+			$(document).ready(function() {
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				
+				$('#arena').hide();
+				$('#restart').hide();
+				$('#blindfold').show();
+
+				game_initialize(config);
+
+				$('#blindfold').click(function() {
+					$('#arena').show();
+					$('#restart').show();
+					$('#blindfold').hide();
+
+					game_start();
+				});
+				$('#blindfold').click();
+				$('#restart').click(function() { game_trash(); game_initialize(config); game_start(); });
+			});
+		</script>
+		<style type="text/css">
+			div#blindfold {
+				background: #d22;
+				margin: auto;
+				padding: 10em;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">Click to roll your dice!</div>
+		<div id="arena"></div>
+		<div id="report"></div>
+		<button id="restart">Reroll</button>
+	</body>
+</html>

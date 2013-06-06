@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Test of SVG-in-HTML embedding, with scripting!</title>
+		<script src="../static/jquery.min.js"></script>
+		<script src="../static/raphael-min.js"></script>
+		<script type="text/javascript">
+			var config = {}
+			config.time_limit = 5;
+			config.target_count = 5;
+			config.min_radius = 5;
+			config.max_radius = 10;
+
+			var state = {}
+
+			var results = {}
+
+
+			var game_initialize = function(cfg) {
+				state.paper = Raphael($('#arena')[0], 400, 400);
+				state.paper.setViewBox(0, 0, 100, 100);
+				state.targets = [];
+				for (var i=0; i<cfg.target_count; i++) {
+					var radius = Math.random()*(cfg.max_radius - cfg.min_radius) + cfg.min_radius;
+					var x = Math.random()*(100-2*radius) + radius;
+					var y = Math.random()*(100-2*radius) + radius;
+					var c = state.paper.circle(x, y, 0).attr({fill: 'red', stroke: 'black'}).animate({r: radius}, 300, '<>');
+
+					state.targets.push(c);
+				}
+
+				results.time = 0;
+				results.times = [];
+				results.ended_by_playing = false;
+			};
+
+			function click_handler () {
+				results.times.push( (new Date()) - state.start_time );
+
+				var index = jQuery.inArray(state.targets, this);
+				state.targets.splice(index, 1);
+				if (state.targets.length == 0) {
+					results.ended_by_playing = true;
+					game_end();
+				}
+				this.remove();
+			}
+
+			var game_start = function () {
+				state.start_time = new Date();
+
+				state.interval_id = setTimeout(game_end, config.time_limit*1000);
+
+				jQuery.each(state.targets, function (i, targ) { targ.click(click_handler); });
+			};
+
+			var game_end = function () {
+				clearTimeout(state.interval_id);
+				
+				jQuery.each(state.targets, function (i, targ) { targ.unclick(click_handler); });
+
+				results.time = (new Date()) - state.start_time;
+				console.log(results);
+/*							"type" : "game result",
+	"player" : "{{ user }}",
+							"room" : "{{ room }}",
+							"game" : "drawing_test",
+							"score" : (new Date()).getTime() - start_time
+							*/
+			};
+
+			var game_trash = function () { $('#arena').html(''); };
+
+			$(document).ready(function() {
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+				
+				$('#arena').hide();
+				$('#blindfold').show();
+				
+				game_initialize(config);
+
+
+				$('#blindfold').click(function() {
+					$('#arena').show();
+					$('#blindfold').hide();
+
+					game_start();
+				});
+				//$('#blindfold').click();
+				
+				$('#restart').click(function() { game_trash(); game_initialize(config); game_start(); });
+			});
+		</script>
+		<style type="text/css">
+			div#blindfold {
+				background: #d22;
+				margin: auto;
+				padding: 10em;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">Break the targets as fast as you can!</div>
+		<div id="arena"></div>
+		<div id="report"></div>
+	</body>
+</html>

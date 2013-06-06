@@ -4,31 +4,54 @@
 		<title>Just a Default Block</title>
 		<script src="../static/jquery.min.js"></script>
 		<script type="text/javascript">
+			var config = {};
+			var state = {};
+			var results = {};
+			var game_initialize = function(cfg) {};
+			var game_start = function() { 
+				
+				results.message = "{{ user }} is connected in {{ room }}";
+				game_end(); 
+
+			};
+			var game_end = function() {
+				$('#arena').html('Block was loaded.');
+				// Send result
+				console.log(results);
+			};
+			var game_trash = function() { $('#arena').html(''); };
 			$(document).ready(function() {
 				var wsurl = "ws://li60-203.members.linode.com/results";
 				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
 				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
-				var game_ws = new WebSocket(wsurl);
-				$("div").click(function() {
-					game_ws.send(JSON.stringify({
-						"type" : "game result",
-						"player" : "{{ user }}",
-						"room" : "{{ room }}",
-						"game" : "default",
-						"score" : "default block loaded"
-					}));
-					game_ws.close();
+				
+				$('#arena').hide();
+				$('#blindfold').show();
+
+				game_initialize(config);
+
+				$('#blindfold').click(function() {
+					$('#arena').show();
+					$('#blindfold').hide();
+
+					game_start();
 				});
+				$('#blindfold').click();
+				
+				$('#restart').click(function() { game_trash(); game_initialize(config); game_start(); });
 			});
 		</script>
 		<style type="text/css">
-			div {
-				border: 1px dashed black;
-				background: #bbccbb;
+			div#blindfold {
+				background: #d22;
+				margin: auto;
+				padding: 10em;
 			}
 		</style>
 	</head>
 	<body>
-		<div>You are playing in {{ room }}</div>
+		<div id="blindfold">Default block</div>
+		<div id="arena"></div>
+		<div id="report"></div>
 	</body>
 </html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Enter Some Text</title>
+		<script src="../static/jquery.min.js"></script>
+		<script>
+			var config = {};
+
+			var state = {};
+			state.submit_handler = function() { game_end(); return false; };
+
+			var results = {};
+
+			var game_initialize = function (cfg) {
+				var form = $('<form></form>').attr('action', '#');
+				form.append($('<label>Type something and press enter!</label>').attr('for', 'output'));
+				form.append($('<input></input>').attr('type', 'text').attr('name', 'output'));
+				$('#arena').append(form);
+			};
+
+			var game_start = function () {
+				$('form').on('submit', state.submit_handler);
+			}
+
+			var game_end = function () {
+				console.log({
+						"type" : "game result",
+						"player" : "{{ user }}",
+						"room" : "{{ room }}",
+						"game" : "a_game",
+						"output" : $("[name=output]").val()});
+			};
+
+			var game_trash = function () {
+				$('#arena').html('');
+			};
+
+			$(document).ready(function() {
+				var wsurl = "ws://li60-203.members.linode.com/results";
+				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
+				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
+
+				$('#arena').hide();
+				$('#blindfold').show();
+
+				game_initialize(config);
+
+				$('#blindfold').click(function() {
+					$('#arena').show();
+					$('#blindfold').hide();
+
+					game_start();
+				});
+			});
+		</script>
+		<style type="text/css">
+			#blindfold {
+				background: #d22;
+				margin: auto;
+				padding: 10em;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blindfold">Type whatever you want! Press enter (or submit) to send to the server.</div>
+		<div id="arena"></div>
+		<div id="report"></div>
+	</body>
+</html>
