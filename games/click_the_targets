@@ -60,7 +60,11 @@
 				jQuery.each(state.targets, function (i, targ) { targ.unclick(click_handler); });
 
 				results.time = (new Date()) - state.start_time;
-				console.log(results);
+				if (window.self === window.top) {
+					console.log(results);
+				} else {
+					parent.postMessage(results, "http://li60-203.members.linode.com");
+				}
 /*							"type" : "game result",
 	"player" : "{{ user }}",
 							"room" : "{{ room }}",

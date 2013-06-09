@@ -71,8 +71,10 @@ class MainHandler(tornado.web.RequestHandler):
 		else:
 			path_segments = path.split("/")
 			if path_segments[0] == "games":
-				if path_segments[1] not in files: path_segments[1] = "default"
-				self.render(join(path_games, path_segments[1]), room=room_name, user=user_name)
+				if len(path_segments) == 1 or path_segments[1] not in files: 
+					self.render("games.html", games=files)
+				else:
+					self.render(join(path_games, path_segments[1]), room=room_name, user=user_name)
 			else:
 				self.render(join(*path_segments))
 

@@ -17,7 +17,11 @@
 			var game_end = function() {
 				$('#arena').html('Block was loaded.');
 				// Send result
-				console.log(results);
+				if (window.self === window.top) {
+					console.log(results);
+				} else {
+					parent.postMessage(results, "http://li60-203.members.linode.com");
+				}
 			};
 			var game_trash = function() { $('#arena').html(''); };
 			$(document).ready(function() {

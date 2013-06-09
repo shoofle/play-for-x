@@ -111,6 +111,11 @@ TODO: make this size properly to fit its window. */
 				
 				$('table').off('click', '.fake, .nothing, .target', clicked_square);
 				$('#report').append($('<h3>' + JSON.stringify(results) + '</h3>'));
+				if (window.self === window.top) {
+					console.log(results);
+				} else {
+					parent.postMessage(results, "http://li60-203.members.linode.com");
+				}
 			}
 
 			var game_trash = function () {

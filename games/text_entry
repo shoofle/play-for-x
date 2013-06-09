@@ -7,9 +7,13 @@
 			var config = {};
 
 			var state = {};
-			state.submit_handler = function() { game_end(); return false; };
 
 			var results = {};
+
+			function submit_handler () {
+				results.output = $('[name=output]').val();
+				game_end();
+			}
 
 			var game_initialize = function (cfg) {
 				var form = $('<form></form>').attr('action', '#');
@@ -19,7 +23,7 @@
 			};
 
 			var game_start = function () {
-				$('form').on('submit', state.submit_handler);
+				$('form').on('submit', submit_handler);
 			}
 
 			var game_end = function () {
@@ -29,6 +33,11 @@
 						"room" : "{{ room }}",
 						"game" : "a_game",
 						"output" : $("[name=output]").val()});
+				if (window.self === window.top) {
+					console.log(results);
+				} else {
+					parent.postMessage(results, "http://li60-203.members.linode.com");
+				}
 			};
 
 			var game_trash = function () {

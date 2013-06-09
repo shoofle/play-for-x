@@ -83,6 +83,11 @@
 					console.log(results);
 					console.log('And final state:');
 					console.log(state);
+					if (window.self === window.top) {
+						console.log(results);
+					} else {
+						parent.postMessage(results, "http://li60-203.members.linode.com");
+					}
 
 					// Make sure the game stops playing.
 					game_trash();

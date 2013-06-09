@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Play Some Games!</title>
+		<meta charset="utf-8" />
+		<script type="text/javascript" src="../static/jquery.min.js"></script>
+		<!--script type="text/javascript" src="static/game_select.js"></script-->
+		<script type="text/javascript" src="../static/games.js"></script>
+		<link rel="stylesheet" type="text/css" href="../static/games.css" />
+	</head>
+	<body>
+		<ul id="game-list">
+			{% for f in games %}
+				<li class="game">{{ f }}</li>
+			{% end %}
+		</ul>
+		<div id="controls">
+			<button id="fetch-button">Fetch configuration</button>
+			<textarea></textarea>
+			<button id="push-button">Restart Game</button>
+		</div>
+		<iframe id="game-area"></iframe>
+		<ol id="report"></ol>
+	</body>
+</html>

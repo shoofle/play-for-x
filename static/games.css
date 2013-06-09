@@ -1,0 +1,30 @@
+#game-list {
+	display: inline-block;
+	padding: 5px;
+	background: green;
+}
+#game-list li {
+	margin: 1em;
+	background-color: rgba(255,255,255,0.5);
+	border: 1px dashed gray;
+}
+#game-area {
+	float: right;
+	width: 50%;
+	height: 500px;
+}
+
+#controls {
+	display: inline-block;
+	width: 25%;
+}
+#controls>textarea {
+	height: 10em;
+	width: 100%;
+}
+#controls>button, #controls>textarea {
+	display: block;
+}
+
+.valid { background-color: rgba(0,128,0, 0.5); }
+.invalid { background-color: rgba(128,0,0, 0.5); }

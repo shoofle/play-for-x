@@ -64,7 +64,11 @@
 								"game" : "dice",
 								"rolls" : results.rolls,
 								"score" : results.sum};
-				console.log(res);
+				if (window.self === window.top) {
+					console.log(results);
+				} else {
+					parent.postMessage(results, "http://li60-203.members.linode.com");
+				}
 				/*	$('.result').html(result);
 					game_ws.send(JSON.stringify({
 						"type" : "game result",
