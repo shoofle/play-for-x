@@ -4,7 +4,7 @@ $(document).ready(function () {
 	var room_field = $('form#change-room input[type=text]');
 	var chat_field = $('form#chat-inputs input[type=text]');
 	var room = room_field.val(), name = name_field.val();
-	var wsurl = "ws://li60-203.members.linode.com/socket?name=" + encodeURIComponent(name) + "&room=" + encodeURIComponent(room);
+	var wsurl = "ws://li60-203.members.linode.com:7777/socket?name=" + encodeURIComponent(name) + "&room=" + encodeURIComponent(room);
 	var ws = new WebSocket(wsurl);
 	var indicator = $("#indicator");
 	var play_area = $("#play-area");

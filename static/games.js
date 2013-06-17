@@ -17,7 +17,7 @@ $(document).ready(function () {
 	var push_button = $('#push-button');
 
 	$('#game-list').children().each(function () {
-	$(this).data('url', 'http://li60-203.members.linode.com/games/' + $(this).html());
+	$(this).data('url', 'http://li60-203.members.linode.com:7777/games/' + $(this).html());
 	}).on('click', function (evt) {
 		var url = $(this).data('url');
 		game_area.attr('src', url);

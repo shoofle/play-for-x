@@ -239,10 +239,14 @@
 	</head>
 	<body>
 		<div id="blindfold">
-			Click to start!<br />
-			Then, click inside the grey area to accumulate points!<br />
-			If you get five points, you win!<br />
-			Time limit: 5 seconds!<br />
+			<ul>
+				<li>Your objective is to find and extract all the hidden energy reserves.</li>
+				<li>Click to deploy sensors. Sensors have tick marks pointing in the directions of each energy reserve.</li>
+				<li>Shift-click to deploy an extractor. Extractors only draw energy from the closest reserve, and draw more energy the closer they are to their target.</li>
+				<li>Watch out! You have a limited supply of sensors and extractors!</li>
+				<li>The game ends when you run out of extractors.</li>
+				<li>Click to start!</li>
+			</ul>
 		</div>
 		<div id="arena">
 		</div>
