@@ -6,11 +6,9 @@
 		<script type="text/javascript">
 			var config = {};
 			config.dice = [];
-			var d20 = {integer: true, min: 1, max: 20, name: 'd20'};
-
-			config.dice.push(d20);
-			config.dice.push(d20);
-			config.dice.push(d20);
+			config.dice.push({min: 1, max: 8, name: 'bolt', modifier: 1});
+			config.dice.push({min: 1, max: 6, count: 6, name: 'sneak attack'});
+			config.dice.push({min: 1, max: 4, name: 'sonic'})
 
 			var state = {};
 			
@@ -22,9 +20,17 @@
 
 				jQuery.each(cfg.dice, function(i, die) {
 					var die_obj = {};
-					die_obj.integer = die.integer; die_obj.min = die.min; die_obj.max = die.max; die_obj.name = die.name;
+					jQuery.extend(die_obj, die);
+					if (!('modifier' in die_obj)) { die_obj.modifier = 0; }
+					if (!('count' in die_obj)) { die_obj.count = 1; }
+					if (!('name' in die_obj)) {
+						die_obj.name = die_obj.count + 'd';
+						if (isInt(die_obj.min) && isInt(die_obj.max) && (die_obj.min == 1)) { die_obj.name = die_obj.name + die_obj.max; }
+						else { die_obj.name = die_obj.name +  '[' + die_obj.min + '-' + die_obj.max + ']'; }
+						if (die_obj.modifier != 0) { die_obj.name += (die_obj.modifer>0 ? '+' : '') + die_obj.modifier; }
+					}
 					die_obj.row = $('<li></li>').addClass('die');
-					die_obj.row.append($('<label></label>').html(die.name + ':'));
+					die_obj.row.append($('<label></label>').html(die_obj.name + ':'));
 					die_obj.row.append($('<span></span>').addClass('result'));
 					$('#dice').append(die_obj.row);
 					state.dice.push(die_obj);
@@ -41,15 +47,30 @@
 				results.rolls = [];
 			};
 
+			function isInt(value) { return Math.floor(value) == value; }
+
 			var game_start = function () {
 				jQuery.each(state.dice, function(i, die) {
-					var value;
-					if (die.integer) { value = Math.floor(Math.random()*(die.max - die.min + 1) + die.min); }
-					else { value = Math.random()*(die.max - die.min) + die.min; }
+					var rolls = [], value=0, total = 0;
+					for (var j=0; j<die.count; j++) {
+						if (isInt(die.min) && isInt(die.max)) { value = Math.floor(Math.random()*(die.max - die.min + 1) + die.min); }
+						else { value = Math.random()*(die.max - die.min) + die.min; }
+						rolls.push(value);
+						total += value;
+					}
+
+					result_text = '';
+					if (die.count != 1) { result_text += rolls.join(', '); }
+					else { result_text += total; }
+
+					if (die.modifier != 0) { result_text += (die.modifier>0 ? '+' : '') + die.modifier; }
+
+					if (die.count != 1 || die.modifier != 0) { result_text += ' = ' + (total + die.modifier); }
+
+					die.row.find('.result').html(result_text);
 					
-					die.row.find('.result').html(value);
-					results.sum += value;
-					results.rolls.push(value);
+					results.sum += total + die.modifier;
+					results.rolls.push({rolls: rolls, total: total + die.modifier});
 				});
 				$('#total .result').html(results.sum);
 				
@@ -67,7 +88,7 @@
 				if (window.self === window.top) {
 					console.log(results);
 				} else {
-					parent.postMessage(results, "http://li60-203.members.linode.com");
+					parent.postMessage(results, "http://li60-203.members.linode.com:7777");
 				}
 				/*	$('.result').html(result);
 					game_ws.send(JSON.stringify({

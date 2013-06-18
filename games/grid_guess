@@ -114,7 +114,7 @@ TODO: make this size properly to fit its window. */
 				if (window.self === window.top) {
 					console.log(results);
 				} else {
-					parent.postMessage(results, "http://li60-203.members.linode.com");
+					parent.postMessage(results, "http://li60-203.members.linode.com:7777");
 				}
 			}
 
@@ -124,7 +124,7 @@ TODO: make this size properly to fit its window. */
 			}
 
 			$(document).ready(function() {
-				var wsurl = "ws://li60-203.members.linode.com/results";
+				var wsurl = "ws://li60-203.members.linode.com:7777/results";
 				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
 				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
 				

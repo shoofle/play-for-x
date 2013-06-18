@@ -178,7 +178,7 @@
 				if (window.self === window.top) {
 					console.log(results);
 				} else {
-					parent.postMessage(results, "http://li60-203.members.linode.com");
+					parent.postMessage(results, "http://li60-203.members.linode.com:7777");
 				}
 
 				// Make sure the game stops playing.
@@ -201,7 +201,7 @@
 			$(document).ready(function() {
 				// The WebSocket connecting us to the game server. This doesn't actually need to be a websocket, unless
 				// we want to, at some point, add the functionality for watching someone else play their game.
-				var wsurl = "ws://li60-203.members.linode.com/results";
+				var wsurl = "ws://li60-203.members.linode.com:7777/results";
 				wsurl = wsurl + "?room=" + encodeURIComponent("{{ room }}");
 				wsurl = wsurl + "&name=" + encodeURIComponent("{{ user }}");
 

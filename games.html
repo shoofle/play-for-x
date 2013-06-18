@@ -4,9 +4,16 @@
 		<title>Play Some Games!</title>
 		<meta charset="utf-8" />
 		<script type="text/javascript" src="../static/jquery.min.js"></script>
-		<!--script type="text/javascript" src="static/game_select.js"></script-->
 		<script type="text/javascript" src="../static/games.js"></script>
-		<link rel="stylesheet" type="text/css" href="../static/games.css" />
+	    <script type="text/javascript" src="../static/jsoneditor/jsoneditor-min.js"></script>
+		<link rel="stylesheet" type="text/css" href="../static/jsoneditor/jsoneditor-min.css">
+		<link rel="stylesheet" type="text/css" href="../static/games.css">
+		<script type="text/javascript">
+			var json_editor;
+			$(document).ready(function () {
+				json_editor = new jsoneditor.JSONEditor($('#json')[0]);
+			});
+		</script>
 	</head>
 	<body>
 		<ul id="game-list">
@@ -16,7 +23,7 @@
 		</ul>
 		<div id="controls">
 			<button id="fetch-button">Fetch configuration</button>
-			<textarea></textarea>
+			<div id="json"></div>
 			<button id="push-button">Restart Game</button>
 		</div>
 		<iframe id="game-area"></iframe>

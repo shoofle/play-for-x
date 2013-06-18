@@ -63,7 +63,7 @@
 				if (window.self === window.top) {
 					console.log(results);
 				} else {
-					parent.postMessage(results, "http://li60-203.members.linode.com");
+					parent.postMessage(results, "http://li60-203.members.linode.com:7777");
 				}
 /*							"type" : "game result",
 	"player" : "{{ user }}",
